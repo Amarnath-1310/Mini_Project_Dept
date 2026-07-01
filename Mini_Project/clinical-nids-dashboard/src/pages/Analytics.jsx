@@ -1,123 +1,160 @@
+import { useState, useEffect } from 'react'
+import { BarChart3, TrendingUp, Shield, AlertTriangle, Brain, AlertCircle } from 'lucide-react'
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, Legend, AreaChart, Area
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
 } from 'recharts'
-import { TrendingUp, Shield, Target, Clock } from 'lucide-react'
-import { attackDistribution, attackTimeline, protocolUsage, trafficData } from '../data/mockData'
+import { getLatestDashboardSummary } from '../data/api'
+
+const COLORS = ['#ef4444', '#f97316', '#8b5cf6', '#06b6d4', '#eab308', '#ec4899', '#14b8a6', '#3b82f6']
 
 export default function Analytics() {
+  const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { loadAnalytics() }, [])
+
+  async function loadAnalytics() {
+    setLoading(true)
+    try {
+      const s = await getLatestDashboardSummary()
+      if (s) setSummary(s)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  const hasData = !!summary && summary.status === 'COMPLETED'
+  const attackTypes = summary?.attackTypes || []
+  const severityDist = summary?.severityDistribution || {}
+  const modelAccuracy = summary?.modelAccuracy || 0
+  const riskLevel = summary?.riskLevel || 'N/A'
+  const totalAttacks = summary?.attackTraffic || 0
+  const totalRecords = summary?.totalRecords || 0
+
+  const pieData = attackTypes.map((a, i) => ({ name: a.type, value: a.count, color: COLORS[i % COLORS.length] }))
+  const barData = attackTypes.map((a, i) => ({ name: a.type, count: a.count, color: COLORS[i % COLORS.length] }))
+
+  // Categorize attacks
+  const dosAttacks = attackTypes.filter(a => ['DDoS', 'DoS'].includes(a.type)).reduce((s, a) => s + (a.count || 0), 0)
+  const probeAttacks = attackTypes.filter(a => ['PortScan', 'Brute Force'].includes(a.type)).reduce((s, a) => s + (a.count || 0), 0)
+  const webAttacks = attackTypes.filter(a => ['Web Attack', 'Infiltration', 'Botnet'].includes(a.type)).reduce((s, a) => s + (a.count || 0), 0)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center"><div className="w-8 h-8 border-2 border-cyber-blue border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-400">Loading analytics...</p></div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Attack Analytics</h1>
-        <p className="text-sm text-gray-400 mt-1">Comprehensive threat intelligence and trend analysis</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Security Analytics</h1>
+          <p className="text-sm text-gray-400 mt-1">{hasData ? `Analysis of: ${summary.filename}` : 'No analysis data available'}</p>
+        </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Attacks Blocked', value: '1,247', icon: Shield, color: 'text-cyber-green', change: '+18% vs last month' },
-          { label: 'Avg Detection Time', value: '0.8s', icon: Clock, color: 'text-cyber-blue', change: '-12% improvement' },
-          { label: 'True Positive Rate', value: '98.4%', icon: Target, color: 'text-cyber-purple', change: '+0.6% vs last month' },
-          { label: 'Attack Trend', value: '+23%', icon: TrendingUp, color: 'text-cyber-orange', change: 'DDoS increasing' },
-        ].map(({ label, value, icon: Icon, color, change }) => (
-          <div key={label} className="stat-card">
-            <div className="flex items-center gap-3 mb-3">
-              <Icon className={`w-5 h-5 ${color}`} />
-              <span className="text-xs text-gray-400">{label}</span>
-            </div>
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-[11px] text-gray-500 mt-1">{change}</p>
+      {!hasData && (
+        <div className="glass-card p-12 text-center">
+          <AlertCircle className="w-16 h-16 text-cyber-blue mx-auto mb-4 opacity-50" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Analytics Data</h3>
+          <p className="text-sm text-gray-400">Upload and analyze a dataset to see analytics.</p>
+        </div>
+      )}
+
+      {hasData && (<>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="stat-card">
+            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-red/15 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-cyber-red" /></div></div>
+            <p className="text-2xl font-bold text-white">{totalAttacks.toLocaleString()}</p>
+            <p className="text-xs text-gray-400 mt-1">Total Attacks Detected</p>
           </div>
-        ))}
-      </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-purple/15 flex items-center justify-center"><BarChart3 className="w-5 h-5 text-cyber-purple" /></div></div>
+            <p className="text-2xl font-bold text-white">{attackTypes.length}</p>
+            <p className="text-xs text-gray-400 mt-1">Attack Categories</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-blue/15 flex items-center justify-center"><Brain className="w-5 h-5 text-cyber-blue" /></div></div>
+            <p className="text-2xl font-bold text-white">{(modelAccuracy * 100).toFixed(1)}%</p>
+            <p className="text-xs text-gray-400 mt-1">Model Accuracy</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-orange/15 flex items-center justify-center"><Shield className="w-5 h-5 text-cyber-orange" /></div></div>
+            <p className="text-2xl font-bold text-white">{riskLevel}</p>
+            <p className="text-xs text-gray-400 mt-1">Risk Level</p>
+          </div>
+        </div>
 
-      {/* Charts row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Attack distribution pie */}
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold text-white mb-4">Attack Distribution</h3>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`} labelLine={false}>
+                    {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <p className="text-sm text-gray-500 text-center py-8">No attack data</p>}
+          </div>
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold text-white mb-4">Attack Counts</h3>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={barData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1b2741" />
+                  <XAxis dataKey="name" stroke="#4b5563" fontSize={11} angle={-20} textAnchor="end" height={60} />
+                  <YAxis stroke="#4b5563" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>{barData.map((e, i) => <Cell key={i} fill={e.color} />)}</Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <p className="text-sm text-gray-500 text-center py-8">No attack data</p>}
+          </div>
+        </div>
+
+        {/* Attack Categories Summary */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-1">Attack Type Distribution</h3>
-          <p className="text-xs text-gray-400 mb-4">Percentage breakdown of all classified traffic</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie data={attackDistribution} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3} dataKey="value" label={({ name, value }) => `${name}: ${value}%`} labelLine={false}>
-                {attackDistribution.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex flex-wrap gap-4 mt-3 justify-center">
-            {attackDistribution.map(d => (
-              <div key={d.name} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
-                <span className="text-xs text-gray-400">{d.name} ({d.value}%)</span>
+          <h3 className="text-sm font-semibold text-white mb-4">Attack Category Summary</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30">
+              <p className="text-xs text-gray-400 mb-1">DoS / DDoS Attacks</p>
+              <p className="text-xl font-bold text-white">{dosAttacks.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 mt-1">{totalAttacks > 0 ? ((dosAttacks / totalAttacks) * 100).toFixed(1) : 0}% of total attacks</p>
+            </div>
+            <div className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30">
+              <p className="text-xs text-gray-400 mb-1">Probe / Scanning Attacks</p>
+              <p className="text-xl font-bold text-white">{probeAttacks.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 mt-1">{totalAttacks > 0 ? ((probeAttacks / totalAttacks) * 100).toFixed(1) : 0}% of total attacks</p>
+            </div>
+            <div className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30">
+              <p className="text-xs text-gray-400 mb-1">Web / Infiltration Attacks</p>
+              <p className="text-xl font-bold text-white">{webAttacks.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 mt-1">{totalAttacks > 0 ? ((webAttacks / totalAttacks) * 100).toFixed(1) : 0}% of total attacks</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Severity Distribution */}
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-semibold text-white mb-4">Severity Distribution</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {Object.entries(severityDist).map(([sev, count]) => (
+              <div key={sev} className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30 text-center">
+                <p className="text-lg font-bold text-white">{count?.toLocaleString?.() || 0}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{sev}</p>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Protocol usage bar */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-1">Network Protocol Usage</h3>
-          <p className="text-xs text-gray-400 mb-4">Flow count by protocol type</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={protocolUsage}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1b2741" />
-              <XAxis dataKey="name" stroke="#4b5563" fontSize={11} />
-              <YAxis stroke="#4b5563" fontSize={11} />
-              <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {protocolUsage.map((_, i) => (
-                  <Cell key={i} fill={['#3b82f6', '#22c55e', '#f97316', '#8b5cf6', '#06b6d4'][i]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Attack timeline */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-1">Attack Timeline (30 Days)</h3>
-        <p className="text-xs text-gray-400 mb-4">Daily attack count by category</p>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={attackTimeline}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1b2741" />
-            <XAxis dataKey="day" stroke="#4b5563" fontSize={10} interval={4} />
-            <YAxis stroke="#4b5563" fontSize={10} />
-            <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
-            <Legend wrapperStyle={{ fontSize: '12px' }} />
-            <Line type="monotone" dataKey="DDoS" stroke="#ef4444" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="PortScan" stroke="#f97316" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="Malware" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="BruteForce" stroke="#06b6d4" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Threats over time area chart */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-1">Threat Intensity Heatmap</h3>
-        <p className="text-xs text-gray-400 mb-4">Hourly threat count over 24 hours</p>
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={trafficData}>
-            <defs>
-              <linearGradient id="gThreat" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1b2741" />
-            <XAxis dataKey="time" stroke="#4b5563" fontSize={10} />
-            <YAxis stroke="#4b5563" fontSize={10} />
-            <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
-            <Area type="monotone" dataKey="threats" stroke="#ef4444" fill="url(#gThreat)" strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      </>)}
     </div>
   )
 }

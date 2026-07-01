@@ -86,6 +86,9 @@ export default function DatasetUpload() {
         ...analysisResult,
       })
 
+      // Store datasetId in localStorage so Dashboard can show real data
+      localStorage.setItem('datasetId', String(uploadResult.datasetId))
+
       setAnalyzing(false)
 
       // Auto-navigate after short delay

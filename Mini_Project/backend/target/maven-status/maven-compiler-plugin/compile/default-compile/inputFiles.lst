@@ -3,11 +3,13 @@ D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\config\SecurityConfig.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\AlertController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\AuthController.java
+D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DashboardController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DatasetController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DetectionController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\TrafficController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\AuthResponse.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DashboardStats.java
+D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DashboardSummary.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DatasetAnalysisResponse.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DatasetUploadResponse.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\LoginRequest.java

@@ -19,3 +19,4 @@ export {
   markAlertReviewed,
 } from '../api/datasetApi';
 export { downloadReport, getReportData, getReportDownloadUrl } from '../api/reportApi';
+export { getDashboardSummary, getLatestDashboardSummary, getDashboardDatasets } from '../api/dashboardApi';

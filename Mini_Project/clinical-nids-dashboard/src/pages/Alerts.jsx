@@ -1,156 +1,124 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  Bell, ShieldAlert, CheckCircle, Clock, AlertTriangle,
-  Eye, Check, Ban, Download, Search, Filter
-} from 'lucide-react'
-import { alerts } from '../data/mockData'
+import { useState, useEffect } from 'react'
+import { Bell, AlertTriangle, Shield, AlertCircle, CheckCircle, Clock, Filter } from 'lucide-react'
+import { getLatestDashboardSummary } from '../data/api'
 
-const statusColors = {
-  Active: 'text-cyber-red bg-cyber-red/10 border border-cyber-red/30',
-  Pending: 'text-cyber-orange bg-cyber-orange/10 border border-cyber-orange/30',
-  Resolved: 'text-cyber-green bg-cyber-green/10 border border-cyber-green/30',
+const SEVERITY_COLORS = {
+  CRITICAL: 'text-red-400 bg-red-400/10 border-red-400/30',
+  HIGH: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
+  MEDIUM: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
+  LOW: 'text-cyber-green bg-cyber-green/10 border-cyber-green/30',
 }
 
 export default function Alerts() {
-  const navigate = useNavigate()
-  const [tab, setTab] = useState('all')
-  const [search, setSearch] = useState('')
+  const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('ALL')
 
-  const filtered = alerts.filter(a => {
-    const matchTab = tab === 'all' || a.status.toLowerCase() === tab
-    const matchSearch = a.type.toLowerCase().includes(search.toLowerCase()) || a.source.includes(search)
-    return matchTab && matchSearch
+  useEffect(() => { loadAlerts() }, [])
+
+  async function loadAlerts() {
+    setLoading(true)
+    try {
+      const s = await getLatestDashboardSummary()
+      if (s) setSummary(s)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  const hasData = !!summary && summary.status === 'COMPLETED'
+  const attackTypes = summary?.attackTypes || []
+  const severityDist = summary?.severityDistribution || {}
+
+  // Build alert entries from real attack data
+  const alerts = attackTypes.map((at, i) => {
+    const severity = at.percentage > 30 ? 'CRITICAL' : at.percentage > 15 ? 'HIGH' : at.percentage > 5 ? 'MEDIUM' : 'LOW'
+    return {
+      id: i + 1,
+      type: at.type,
+      count: at.count,
+      percentage: at.percentage,
+      severity,
+      status: 'ACTIVE',
+      timestamp: summary?.analyzedTime || new Date().toISOString(),
+    }
   })
 
-  const counts = {
-    all: alerts.length,
-    active: alerts.filter(a => a.status === 'Active').length,
-    pending: alerts.filter(a => a.status === 'Pending').length,
-    resolved: alerts.filter(a => a.status === 'Resolved').length,
+  const filtered = filter === 'ALL' ? alerts : alerts.filter(a => a.severity === filter)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center"><div className="w-8 h-8 border-2 border-cyber-blue border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-400">Loading alerts...</p></div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Alert Management</h1>
-          <p className="text-sm text-gray-400 mt-1">Review and manage security alerts</p>
+          <p className="text-sm text-gray-400 mt-1">{hasData ? `Alerts from: ${summary.filename}` : 'No analysis data available'}</p>
         </div>
-        <button className="btn-secondary flex items-center gap-2 text-xs py-2">
-          <Download className="w-3.5 h-3.5" /> Export Report
-        </button>
+        <button onClick={loadAlerts} className="btn-secondary flex items-center gap-2 text-xs py-2"><Clock className="w-3.5 h-3.5" /> Refresh</button>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Alerts', value: counts.all, icon: Bell, color: 'text-cyber-blue', bg: 'bg-cyber-blue/15' },
-          { label: 'Active Threats', value: counts.active, icon: ShieldAlert, color: 'text-cyber-red', bg: 'bg-cyber-red/15' },
-          { label: 'Pending Review', value: counts.pending, icon: Clock, color: 'text-cyber-orange', bg: 'bg-cyber-orange/15' },
-          { label: 'Resolved', value: counts.resolved, icon: CheckCircle, color: 'text-cyber-green', bg: 'bg-cyber-green/15' },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="stat-card flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center`}>
-              <Icon className={`w-5 h-5 ${color}`} />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-white">{value}</p>
-              <p className="text-xs text-gray-400">{label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {!hasData && (
+        <div className="glass-card p-12 text-center">
+          <AlertCircle className="w-16 h-16 text-cyber-blue mx-auto mb-4 opacity-50" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Alerts Available</h3>
+          <p className="text-sm text-gray-400">Upload and analyze a dataset to generate security alerts.</p>
+        </div>
+      )}
 
-      {/* Filters */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex gap-2">
-          {[
-            { key: 'all', label: 'All Alerts' },
-            { key: 'active', label: 'Active' },
-            { key: 'pending', label: 'Pending' },
-            { key: 'resolved', label: 'Resolved' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
-                tab === key
-                  ? 'bg-cyber-blue/20 text-cyber-blue border border-cyber-blue/40'
-                  : 'bg-navy-700/50 text-gray-400 border border-navy-600/50 hover:text-gray-200'
-              }`}
-            >
-              {label}
-              <span className="ml-2 text-[10px] opacity-70">{counts[key]}</span>
-            </button>
+      {hasData && (<>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(sev => (
+            <div key={sev} className={`glass-card p-4 border ${SEVERITY_COLORS[sev]} cursor-pointer`} onClick={() => setFilter(filter === sev ? 'ALL' : sev)}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-white">{severityDist[sev] || 0}</p>
+                  <p className="text-xs text-gray-400 mt-1">{sev} Severity</p>
+                </div>
+                <AlertTriangle className={`w-5 h-5 ${SEVERITY_COLORS[sev].split(' ')[0]}`} />
+              </div>
+            </div>
           ))}
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search alerts..."
-            className="input-field pl-10 w-64 text-sm"
-          />
-        </div>
-      </div>
 
-      {/* Alert list */}
-      <div className="space-y-3">
-        {filtered.map(alert => (
-          <div key={alert.id} className="glass-card p-4 hover:border-cyber-blue/30 transition-all">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 flex-1">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                  alert.severity === 'CRITICAL' ? 'bg-red-500/15' : alert.severity === 'HIGH' ? 'bg-orange-500/15' : 'bg-yellow-500/15'
-                }`}>
-                  <AlertTriangle className={`w-4.5 h-4.5 ${
-                    alert.severity === 'CRITICAL' ? 'text-cyber-red' : alert.severity === 'HIGH' ? 'text-cyber-orange' : 'text-yellow-400'
-                  }`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-sm font-semibold text-white">{alert.type}</h4>
-                    <span className={`severity-${alert.severity.toLowerCase()}`}>{alert.severity}</span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColors[alert.status]}`}>{alert.status}</span>
-                  </div>
-                  <p className="text-xs text-gray-400 mb-2">{alert.description}</p>
-                  <div className="flex items-center gap-4 text-[11px] text-gray-500">
-                    <span>Source: <span className="text-gray-300 font-mono">{alert.source}</span></span>
-                    <span>Time: <span className="text-gray-300">{alert.timestamp}</span></span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => navigate('/threats/1')} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
-                  <Eye className="w-3.5 h-3.5" /> View
-                </button>
-                {alert.status !== 'Resolved' && (
-                  <>
-                    <button className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-cyber-green">
-                      <Check className="w-3.5 h-3.5" /> Review
-                    </button>
-                    <button className="btn-danger text-xs py-1.5 px-3 flex items-center gap-1.5">
-                      <Ban className="w-3.5 h-3.5" /> Block IP
-                    </button>
-                  </>
-                )}
-              </div>
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white">Detected Threat Alerts</h3>
+            <div className="flex items-center gap-2">
+              <Filter className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-xs text-gray-400">{filter !== 'ALL' ? `Filtered: ${filter}` : 'All alerts'}</span>
             </div>
           </div>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="glass-card p-12 text-center">
-            <CheckCircle className="w-12 h-12 text-cyber-green mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-gray-400">No alerts matching your filters</p>
+          <div className="space-y-3">
+            {filtered.length > 0 ? filtered.map(alert => (
+              <div key={alert.id} className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30 hover:border-cyber-blue/30 transition-all">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${SEVERITY_COLORS[alert.severity]}`}>
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{alert.type} Attack Detected</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{alert.count?.toLocaleString()} occurrences &middot; {alert.percentage?.toFixed(1)}% of all attacks</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${SEVERITY_COLORS[alert.severity]}`}>{alert.severity}</span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-cyber-blue bg-cyber-blue/10">{alert.status}</span>
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <p className="text-sm text-gray-500 text-center py-8">No alerts match the current filter.</p>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </>)}
     </div>
   )
 }

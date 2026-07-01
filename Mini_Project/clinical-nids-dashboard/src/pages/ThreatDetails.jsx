@@ -1,173 +1,172 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  ArrowLeft, Shield, Clock, Target, Activity, Globe,
-  AlertTriangle, Cpu, Zap, Ban, Download, CheckCircle
-} from 'lucide-react'
-import { threatDetailsData, aiFeatures } from '../data/mockData'
+import { ArrowLeft, AlertTriangle, Shield, Brain, Database, AlertCircle } from 'lucide-react'
+import { getLatestDashboardSummary } from '../data/api'
+
+const SEVERITY_COLORS = {
+  CRITICAL: 'text-red-400 bg-red-400/10',
+  HIGH: 'text-orange-400 bg-orange-400/10',
+  MEDIUM: 'text-yellow-400 bg-yellow-400/10',
+  LOW: 'text-cyber-green bg-cyber-green/10',
+}
 
 export default function ThreatDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const t = threatDetailsData
+  const [summary, setSummary] = useState(null)
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { loadDetails() }, [])
+
+  async function loadDetails() {
+    setLoading(true)
+    try {
+      const s = await getLatestDashboardSummary()
+      if (s) setSummary(s)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  const hasData = !!summary && summary.status === 'COMPLETED'
+  const attackTypes = summary?.attackTypes || []
+  const globalFeatures = summary?.globalFeatureImportance || []
+  const selected = attackTypes[selectedIdx] || null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center"><div className="w-8 h-8 border-2 border-cyber-blue border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-400">Loading threat details...</p></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-6xl">
-      {/* Back button + header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-navy-700/60 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-gray-400" />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{t.attackType}</h1>
-            <span className="severity-critical">CRITICAL</span>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full text-cyber-green bg-cyber-green/10 border border-cyber-green/30">Blocked</span>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="btn-secondary p-2"><ArrowLeft className="w-4 h-4" /></button>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Threat Details</h1>
+            <p className="text-sm text-gray-400 mt-1">{hasData ? `Dataset: ${summary.filename}` : 'No analysis data available'}</p>
           </div>
-          <p className="text-sm text-gray-400 mt-1">Detected at {t.detectedTime} · AI confidence {t.confidence}%</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn-danger flex items-center gap-2 text-xs py-2">
-            <Ban className="w-3.5 h-3.5" /> Block Source IP
-          </button>
-          <button className="btn-secondary flex items-center gap-2 text-xs py-2">
-            <Download className="w-3.5 h-3.5" /> Export
-          </button>
         </div>
       </div>
 
-      {/* Top metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Confidence', value: `${t.confidence}%`, icon: Target, color: 'text-cyber-blue' },
-          { label: 'Duration', value: t.duration, icon: Clock, color: 'text-cyber-orange' },
-          { label: 'Packets/sec', value: t.packetsPerSecond.toLocaleString(), icon: Zap, color: 'text-cyber-red' },
-          { label: 'Bytes/sec', value: `${(t.bytesPerSecond / 1e6).toFixed(1)} MB`, icon: Activity, color: 'text-cyber-purple' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="stat-card flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-navy-700/60 flex items-center justify-center">
-              <Icon className={`w-5 h-5 ${color}`} />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-white">{value}</p>
-              <p className="text-xs text-gray-400">{label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {!hasData && (
+        <div className="glass-card p-12 text-center">
+          <AlertCircle className="w-16 h-16 text-cyber-blue mx-auto mb-4 opacity-50" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Threat Data Available</h3>
+          <p className="text-sm text-gray-400 mb-6">Upload and analyze a dataset to see threat details.</p>
+          <button onClick={() => navigate('/upload')} className="btn-primary text-sm">Upload Dataset</button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Network info */}
+      {hasData && (<>
+        {/* Dataset Summary Context */}
         <div className="glass-card p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Globe className="w-4.5 h-4.5 text-cyber-blue" />
-            <h3 className="text-sm font-semibold text-white">Network Information</h3>
+            <Database className="w-4 h-4 text-cyber-blue" />
+            <h3 className="text-sm font-semibold text-white">Dataset Summary</h3>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { label: 'Protocol', value: t.protocol },
-              { label: 'Source IP', value: t.sourceIP },
-              { label: 'Destination IP', value: t.destinationIP },
-              { label: 'Source Port', value: t.sourcePort },
-              { label: 'Destination Port', value: t.destinationPort },
-              { label: 'Flag Pattern', value: t.networkInfo.flagsAbnormal },
-              { label: 'Total Packets', value: t.networkInfo.totalPackets },
-              { label: 'Total Bytes', value: t.networkInfo.totalBytes },
-              { label: 'Unique Source IPs', value: t.networkInfo.uniqueSrcIPs },
-              { label: 'Unique Dest IPs', value: t.networkInfo.uniqueDstIPs },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-                <p className="text-sm font-medium text-gray-200 font-mono">{value}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
+              <p className="text-xs text-gray-400">Total Records</p>
+              <p className="text-lg font-bold text-white">{summary.totalRecords?.toLocaleString()}</p>
+            </div>
+            <div className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
+              <p className="text-xs text-gray-400">Attack Traffic</p>
+              <p className="text-lg font-bold text-cyber-red">{summary.attackTraffic?.toLocaleString()}</p>
+            </div>
+            <div className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
+              <p className="text-xs text-gray-400">Attack %</p>
+              <p className="text-lg font-bold text-cyber-orange">{summary.attackPercentage?.toFixed(1)}%</p>
+            </div>
+            <div className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
+              <p className="text-xs text-gray-400">Risk Level</p>
+              <p className="text-lg font-bold text-white">{summary.riskLevel}</p>
+            </div>
           </div>
         </div>
 
-        {/* AI Explanation */}
+        {/* Attack Type Selector */}
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-semibold text-white mb-4">Select Attack Type</h3>
+          {attackTypes.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {attackTypes.map((at, i) => (
+                <button key={i} onClick={() => setSelectedIdx(i)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === selectedIdx ? 'bg-cyber-blue/20 text-cyber-blue border border-cyber-blue/40' : 'bg-navy-700/40 text-gray-400 border border-navy-600/30 hover:text-gray-200'}`}>
+                  {at.type} ({at.count?.toLocaleString()})
+                </button>
+              ))}
+            </div>
+          ) : <p className="text-sm text-gray-500">No attacks detected in this dataset.</p>}
+        </div>
+
+        {/* Selected Attack Detail */}
+        {selected && (
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle className="w-4 h-4 text-cyber-red" />
+              <h3 className="text-sm font-semibold text-white">{selected.type} Attack Details</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30">
+                <p className="text-xs text-gray-400 mb-1">Total Occurrences</p>
+                <p className="text-2xl font-bold text-white">{selected.count?.toLocaleString()}</p>
+              </div>
+              <div className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30">
+                <p className="text-xs text-gray-400 mb-1">% of All Attacks</p>
+                <p className="text-2xl font-bold text-white">{selected.percentage?.toFixed(1)}%</p>
+              </div>
+              <div className="bg-navy-700/30 rounded-lg p-4 border border-navy-600/30">
+                <p className="text-xs text-gray-400 mb-1">Severity</p>
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${selected.percentage > 30 ? SEVERITY_COLORS.CRITICAL : selected.percentage > 15 ? SEVERITY_COLORS.HIGH : selected.percentage > 5 ? SEVERITY_COLORS.MEDIUM : SEVERITY_COLORS.LOW}`}>
+                  {selected.percentage > 30 ? 'CRITICAL' : selected.percentage > 15 ? 'HIGH' : selected.percentage > 5 ? 'MEDIUM' : 'LOW'}
+                </span>
+              </div>
+            </div>
+
+            {/* Distribution Bar */}
+            <div className="mb-6">
+              <p className="text-xs text-gray-400 mb-2">Attack Distribution</p>
+              <div className="h-3 bg-navy-700 rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-cyber-red to-cyber-orange transition-all duration-700" style={{ width: `${selected.percentage || 0}%` }} />
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1">{selected.type} accounts for {selected.percentage?.toFixed(1)}% of all detected attacks</p>
+            </div>
+          </div>
+        )}
+
+        {/* SHAP Features */}
         <div className="glass-card p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Cpu className="w-4.5 h-4.5 text-cyber-purple" />
-            <h3 className="text-sm font-semibold text-white">AI Explanation</h3>
+            <Brain className="w-4 h-4 text-cyber-purple" />
+            <h3 className="text-sm font-semibold text-white">SHAP Feature Importance</h3>
           </div>
-
-          <p className="text-xs text-gray-400 mb-4">
-            Why was this traffic classified as <span className="text-cyber-orange font-semibold">{t.attackType}</span>?
-          </p>
-
-          {/* SHAP features */}
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-3">Feature Importance (SHAP Values)</p>
-          <div className="space-y-3 mb-6">
-            {aiFeatures.map(({ name, importance }) => (
-              <div key={name}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-300">{name}</span>
-                  <span className="text-gray-400 font-mono">{importance}%</span>
-                </div>
-                <div className="h-2.5 bg-navy-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${importance}%`,
-                      background: importance > 70 ? 'linear-gradient(90deg, #3b82f6, #06b6d4)' : importance > 50 ? '#f97316' : '#6b7280'
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Top contributing factors */}
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-3">Contributing Factors</p>
-          <div className="space-y-2">
-            {t.aiExplanation.map((reason, i) => (
-              <div key={i} className="flex items-start gap-2.5 bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
-                <AlertTriangle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${i === 0 ? 'text-cyber-red' : i === 1 ? 'text-cyber-orange' : 'text-yellow-400'}`} />
-                <p className="text-xs text-gray-300 leading-relaxed">{reason}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-4">Event Timeline</h3>
-        <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-1 before:bottom-1 before:w-px before:bg-navy-600">
-          {[
-            { time: '12:30:00', event: 'Initial anomalous traffic detected', color: 'bg-cyber-blue' },
-            { time: '12:30:15', event: 'AI model classifies as DDoS — confidence 97%', color: 'bg-cyber-orange' },
-            { time: '12:30:18', event: 'Automatic mitigation triggered — rate limiting applied', color: 'bg-cyber-purple' },
-            { time: '12:30:45', event: 'Source IP added to blocklist', color: 'bg-cyber-red' },
-            { time: '12:34:32', event: 'Traffic normalized — attack mitigated', color: 'bg-cyber-green' },
-          ].map(({ time, event, color }) => (
-            <div key={time} className="relative flex items-start gap-3">
-              <div className={`absolute -left-4 w-3 h-3 rounded-full ${color} border-2 border-navy-800`} />
-              <span className="text-xs text-gray-500 font-mono w-20 flex-shrink-0">{time}</span>
-              <p className="text-sm text-gray-300">{event}</p>
+          <p className="text-xs text-gray-400 mb-4">Top features driving attack detection (global importance)</p>
+          {globalFeatures.length > 0 ? (
+            <div className="space-y-3">
+              {globalFeatures.slice(0, 10).map((f, i) => {
+                const mx = Math.max(...globalFeatures.map(g => g.impact || 0))
+                const pct = mx > 0 ? ((f.impact || 0) / mx) * 100 : 0
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-300">{f.name}</span>
+                      <span className="text-gray-400 font-mono">{(f.impact || 0).toFixed(4)}</span>
+                    </div>
+                    <div className="h-2 bg-navy-700 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-cyber-purple to-cyber-cyan transition-all duration-700" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
+          ) : <p className="text-sm text-gray-500 text-center py-8">No SHAP feature data available</p>}
         </div>
-      </div>
-
-      {/* Recommended actions */}
-      <div className="glass-card p-5 border-cyber-green/30">
-        <div className="flex items-center gap-2 mb-3">
-          <CheckCircle className="w-4.5 h-4.5 text-cyber-green" />
-          <h3 className="text-sm font-semibold text-white">Recommended Actions</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            'Update firewall rules to block source subnet',
-            'Review similar traffic patterns from last 7 days',
-            'Notify SOC team for further investigation',
-          ].map((action, i) => (
-            <div key={i} className="bg-navy-700/30 rounded-lg p-3 border border-navy-600/30">
-              <p className="text-xs text-gray-300">{action}</p>
-              <button className="mt-2 text-[11px] text-cyber-blue hover:text-blue-400 font-medium">Execute →</button>
-            </div>
-          ))}
-        </div>
-      </div>
+      </>)}
     </div>
   )
 }
