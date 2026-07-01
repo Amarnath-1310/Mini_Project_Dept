@@ -1,4 +1,5 @@
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\ClinicalNidsApplication.java
+D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\config\GlobalExceptionHandler.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\config\SecurityConfig.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\AlertController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\AuthController.java

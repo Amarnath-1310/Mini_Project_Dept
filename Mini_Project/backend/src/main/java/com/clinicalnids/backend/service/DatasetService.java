@@ -66,8 +66,8 @@ public class DatasetService {
             throw new IllegalArgumentException("Only .parquet files are supported");
         }
 
-        // Create upload directory
-        Path uploadPath = Paths.get(uploadDir);
+        // Create upload directory (use absolute path for transferTo compatibility)
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
         Files.createDirectories(uploadPath);
 
         // Generate unique filename

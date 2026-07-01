@@ -8,6 +8,7 @@ import Analytics from './pages/Analytics'
 import ThreatDetails from './pages/ThreatDetails'
 import DatasetUpload from './pages/DatasetUpload'
 import AnalysisResult from './pages/AnalysisResult'
+import Profile from './pages/Profile'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="alerts" element={<Alerts />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="threats/:id" element={<ThreatDetails />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

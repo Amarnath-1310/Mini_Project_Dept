@@ -1,4 +1,27 @@
 """
+Clinical-NIDS ML Service — Legacy Entry Point
+===============================================
+This file is deprecated. Use: python -m app.main
+"""
+
+import sys
+from pathlib import Path
+
+# Redirect to new app structure
+ROOT_DIR = Path(__file__).resolve().parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from app.main import app
+
+if __name__ == "__main__":
+    import uvicorn
+    print("=" * 60)
+    print("  Clinical-NIDS ML Service v2.0")
+    print("  Starting on http://localhost:8000")
+    print("=" * 60)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+"""
 Clinical-NIDS: FastAPI Machine Learning Service
 =================================================
 REST API for network intrusion detection with explainable AI.

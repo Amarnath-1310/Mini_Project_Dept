@@ -4,9 +4,7 @@ import {
   Upload, FileText, CheckCircle, AlertCircle, X, Loader2,
   Database, ArrowRight, Info
 } from 'lucide-react'
-import {
-  uploadDataset, analyzeDataset, mlUploadDataset, mlAnalyzeDataset
-} from '../data/api'
+import { uploadDataset, analyzeDataset } from '../data/api'
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
 
@@ -69,58 +67,30 @@ export default function DatasetUpload() {
     setProgress(10)
 
     try {
-      // Step 1: Try Spring Boot backend first
+      // Step 1: Upload to Spring Boot backend
       setProgress(20)
-      let uploadResult
-      let useBackend = true
-
-      try {
-        uploadResult = await uploadDataset(file)
-        setProgress(50)
-      } catch {
-        // Fallback to ML service directly
-        console.warn('Backend unavailable, using ML service directly')
-        useBackend = false
-        const mlResult = await mlUploadDataset(file)
-        uploadResult = { datasetId: mlResult.dataset_id, dataset_id_ml: mlResult.dataset_id }
-        setProgress(50)
-      }
+      const uploadResult = await uploadDataset(file)
+      setProgress(50)
 
       setUploading(false)
       setAnalyzing(true)
       setProgress(60)
 
-      // Step 2: Trigger analysis
-      let analysisResult
-      let finalDatasetId
-      if (useBackend && uploadResult.datasetId) {
-        analysisResult = await analyzeDataset(uploadResult.datasetId)
-        setProgress(100)
-        finalDatasetId = uploadResult.datasetId
-        setSuccess({
-          datasetId: uploadResult.datasetId,
-          filename: file.name,
-          ...analysisResult,
-        })
-      } else {
-        // ML direct flow
-        const mlDatasetId = uploadResult.dataset_id_ml || uploadResult.datasetId
-        analysisResult = await mlAnalyzeDataset(mlDatasetId)
-        setProgress(100)
-        finalDatasetId = 'ml-' + mlDatasetId
-        setSuccess({
-          datasetId: mlDatasetId,
-          filename: file.name,
-          mlDirect: true,
-          ...analysisResult,
-        })
-      }
+      // Step 2: Trigger analysis through backend
+      const analysisResult = await analyzeDataset(uploadResult.datasetId)
+      setProgress(100)
+
+      setSuccess({
+        datasetId: uploadResult.datasetId,
+        filename: file.name,
+        ...analysisResult,
+      })
 
       setAnalyzing(false)
 
       // Auto-navigate after short delay
       setTimeout(() => {
-        navigate(`/analysis/${finalDatasetId}`, {
+        navigate(`/analysis/${uploadResult.datasetId}`, {
           state: { mlResult: analysisResult }
         })
       }, 2000)

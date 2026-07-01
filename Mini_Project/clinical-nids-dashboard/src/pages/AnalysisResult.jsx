@@ -41,11 +41,10 @@ export default function AnalysisResult() {
   useEffect(() => {
     if (data) return
     // Fetch from backend
-    const id = datasetId?.replace('ml-', '')
-    if (!id) return
+    if (!datasetId) return
 
     setLoading(true)
-    getAnalysis(id)
+    getAnalysis(datasetId)
       .then(result => setData(result))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -54,12 +53,11 @@ export default function AnalysisResult() {
   const handleDownloadReport = async () => {
     setDownloading(true)
     try {
-      const id = datasetId?.replace('ml-', '')
-      const blob = await downloadReport(id)
+      const blob = await downloadReport(datasetId)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `ClinicalNIDS_Report_${id}.pdf`
+      a.download = `ClinicalNIDS_Report_${datasetId}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch {

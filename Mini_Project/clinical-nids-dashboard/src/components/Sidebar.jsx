@@ -1,8 +1,9 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Shield, Activity, Bell, BarChart3,
-  Search, Settings, LogOut, ChevronRight, Upload
+  Search, Settings, LogOut, ChevronRight, Upload, User
 } from 'lucide-react'
+import { logout } from '../data/api'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,6 +14,13 @@ const navItems = [
 ]
 
 export default function Sidebar() {
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-navy-800 border-r border-navy-600/60 flex flex-col z-50">
       {/* Logo */}
@@ -52,6 +60,10 @@ export default function Sidebar() {
 
         <div className="pt-4 mt-4 border-t border-navy-600/40">
           <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest px-3 mb-3">System</p>
+          <NavLink to="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-navy-700/60 hover:text-gray-200 transition-all">
+            <User className="w-4.5 h-4.5" strokeWidth={1.8} />
+            <span>Profile</span>
+          </NavLink>
           <NavLink to="/search" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-navy-700/60 hover:text-gray-200 transition-all">
             <Search className="w-4.5 h-4.5" strokeWidth={1.8} />
             <span>Search Logs</span>
@@ -65,7 +77,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-navy-600/60">
-        <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all">
+        <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all">
           <LogOut className="w-4.5 h-4.5" strokeWidth={1.8} />
           <span>Sign Out</span>
         </button>

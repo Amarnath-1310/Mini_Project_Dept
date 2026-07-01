@@ -20,11 +20,8 @@ export default function Login() {
       const result = await apiLogin(email, password)
       setToken(result.token)
       navigate('/dashboard')
-    } catch {
-      // Fallback: allow login even if backend is not running
-      console.warn('Backend unavailable, using mock login')
-      setToken('mock-token-' + Date.now())
-      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.')
     } finally {
       setLoading(false)
     }
@@ -84,6 +81,14 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Error message */}
+            {error && (
+              <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-400">{error}</p>
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label className="text-xs font-medium text-gray-400 mb-1.5 block">Email Address</label>
