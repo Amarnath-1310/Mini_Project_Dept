@@ -1,0 +1,182 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: main
+nodes_managed: true
+exported_at: "2026-07-01T06:42:22Z"
+modules:
+    "":
+        dir_name: Clinical Network Intrusion Detection System (NIDS)
+        title: Clinical Network Intrusion Detection System (NIDS)
+        scope:
+            - README.md
+            - .vscode\settings.json
+            - Mini_Project\.vscode\settings.json
+            - Mini_Project\OpenParquet.py
+            - Mini_Project\backend\.mvn\wrapper\maven-wrapper.properties
+            - Mini_Project\backend\pom.xml
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\ClinicalNidsApplication.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\config\SecurityConfig.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\AlertController.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\AuthController.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DatasetController.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DetectionController.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\TrafficController.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\AuthResponse.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DashboardStats.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DatasetAnalysisResponse.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\DatasetUploadResponse.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\LoginRequest.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\TrafficRequest.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\Alert.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\AttackDetail.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\DatasetAnalysis.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\Detection.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\NetworkTraffic.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\PredictionResult.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\entity\User.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\AlertRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\AttackDetailRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\DatasetAnalysisRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\DetectionRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\NetworkTrafficRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\PredictionResultRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\repository\UserRepository.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\security\JwtAuthenticationFilter.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\security\JwtTokenProvider.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\service\AlertService.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\service\AuthService.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\service\CustomUserDetailsService.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\service\DatasetService.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\service\DetectionService.java
+            - Mini_Project\backend\src\main\java\com\clinicalnids\backend\service\ReportService.java
+            - Mini_Project\backend\src\main\resources\application.properties
+            - Mini_Project\clinical-nids-dashboard\index.html
+            - Mini_Project\clinical-nids-dashboard\package-lock.json
+            - Mini_Project\clinical-nids-dashboard\package.json
+            - Mini_Project\clinical-nids-dashboard\postcss.config.js
+            - Mini_Project\clinical-nids-dashboard\src\App.jsx
+            - Mini_Project\clinical-nids-dashboard\src\components\Layout.jsx
+            - Mini_Project\clinical-nids-dashboard\src\components\Sidebar.jsx
+            - Mini_Project\clinical-nids-dashboard\src\components\TopNav.jsx
+            - Mini_Project\clinical-nids-dashboard\src\data\api.js
+            - Mini_Project\clinical-nids-dashboard\src\data\mockData.js
+            - Mini_Project\clinical-nids-dashboard\src\index.css
+            - Mini_Project\clinical-nids-dashboard\src\main.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\Alerts.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\AnalysisResult.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\Analytics.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\Dashboard.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\DatasetUpload.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\Login.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\Monitoring.jsx
+            - Mini_Project\clinical-nids-dashboard\src\pages\ThreatDetails.jsx
+            - Mini_Project\clinical-nids-dashboard\tailwind.config.js
+            - Mini_Project\clinical-nids-dashboard\vite.config.js
+            - Mini_Project\ml-service\app.py
+            - Mini_Project\ml-service\model\feature_names.json
+            - Mini_Project\ml-service\model\label_encoder.pkl
+            - Mini_Project\ml-service\model\model_report.json
+            - Mini_Project\ml-service\model\scaler.pkl
+            - Mini_Project\ml-service\model\xgboost_nids_model.pkl
+            - Mini_Project\ml-service\predict.py
+            - Mini_Project\ml-service\prediction_engine.py
+            - Mini_Project\ml-service\requirements.txt
+            - Mini_Project\ml-service\train_model.py
+            - Mini_Project\results\Benign-Monday-WorkingHours.pcap_ISCX.parquet
+            - Mini_Project\results\Botnet-Friday-WorkingHours-Morning.pcap_ISCX.parquet
+            - Mini_Project\results\Bruteforce-Tuesday-WorkingHours.pcap_ISCX.parquet
+            - Mini_Project\results\DDoS-Friday-WorkingHours-Afternoon.pcap_ISCX.parquet
+            - Mini_Project\results\DoS-Wednesday-WorkingHours.pcap_ISCX.parquet
+            - Mini_Project\results\Infiltration-Thursday-WorkingHours-Afternoon.pcap_ISCX.parquet
+            - Mini_Project\results\Portscan-Friday-WorkingHours-Afternoon.pcap_ISCX.parquet
+            - Mini_Project\results\WebAttacks-Thursday-WorkingHours-Morning.pcap_ISCX.parquet
+            - Mini_Project\start_all.bat
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    build_system:
+        dir_name: Manual Multi-Service Orchestration via Batch Script
+        title: Manual Multi-Service Orchestration via Batch Script
+        scope: []
+        source_files:
+            - Mini_Project/start_all.bat
+            - Mini_Project/backend/pom.xml
+            - Mini_Project/clinical-nids-dashboard/package.json
+            - Mini_Project/ml-service/requirements.txt
+            - Mini_Project/backend/.mvn/wrapper/maven-wrapper.properties
+        children: []
+        depends_on: []
+        related_to: []
+    configuration_system:
+        dir_name: Multi-Service Configuration & Environment Management
+        title: Multi-Service Configuration & Environment Management
+        scope: []
+        source_files:
+            - Mini_Project/backend/src/main/resources/application.properties
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/config/SecurityConfig.java
+            - Mini_Project/ml-service/app.py
+            - Mini_Project/clinical-nids-dashboard/src/data/api.js
+            - Mini_Project/start_all.bat
+            - Mini_Project/backend/pom.xml
+        children: []
+        depends_on: []
+        related_to: []
+    dependency_management:
+        dir_name: Multi-Ecosystem Dependency Management with Maven, npm, and pip
+        title: Multi-Ecosystem Dependency Management with Maven, npm, and pip
+        scope: []
+        source_files:
+            - Mini_Project/backend/pom.xml
+            - Mini_Project/backend/.mvn/wrapper/maven-wrapper.properties
+            - Mini_Project/clinical-nids-dashboard/package.json
+            - Mini_Project/clinical-nids-dashboard/package-lock.json
+            - Mini_Project/ml-service/requirements.txt
+        children: []
+        depends_on: []
+        related_to: []
+    error_handling:
+        dir_name: Error Handling — Ad-hoc Try_Catch with RuntimeException Propagation
+        title: Error Handling — Ad-hoc Try/Catch with RuntimeException Propagation
+        scope: []
+        source_files:
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DetectionService.java
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DatasetService.java
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/ReportService.java
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/security/JwtTokenProvider.java
+            - Mini_Project/ml-service/app.py
+            - Mini_Project/ml-service/predict.py
+            - Mini_Project/ml-service/prediction_engine.py
+            - Mini_Project/clinical-nids-dashboard/src/data/api.js
+        children: []
+        depends_on: []
+        related_to: []
+    frontend_style:
+        dir_name: Cyber-Security Themed React Dashboard with Tailwind CSS
+        title: Cyber-Security Themed React Dashboard with Tailwind CSS
+        scope: []
+        source_files:
+            - Mini_Project/clinical-nids-dashboard/tailwind.config.js
+            - Mini_Project/clinical-nids-dashboard/src/index.css
+            - Mini_Project/clinical-nids-dashboard/src/components/Layout.jsx
+            - Mini_Project/clinical-nids-dashboard/src/components/Sidebar.jsx
+            - Mini_Project/clinical-nids-dashboard/src/pages/Dashboard.jsx
+            - Mini_Project/clinical-nids-dashboard/package.json
+        children: []
+        depends_on: []
+        related_to: []
+    logging_system:
+        dir_name: Logging System — SLF4J with Spring Boot Defaults and Print-Based ML Service
+        title: Logging System — SLF4J with Spring Boot Defaults and Print-Based ML Service
+        scope: []
+        source_files:
+            - Mini_Project/backend/src/main/resources/application.properties
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DatasetService.java
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DetectionService.java
+            - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/ReportService.java
+            - Mini_Project/ml-service/app.py
+            - Mini_Project/ml-service/predict.py
+        children: []
+        depends_on: []
+        related_to: []

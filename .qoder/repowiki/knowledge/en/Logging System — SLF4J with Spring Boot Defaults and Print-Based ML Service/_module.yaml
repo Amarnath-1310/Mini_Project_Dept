@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: logging_system
+title: Logging System — SLF4J with Spring Boot Defaults and Print-Based ML Service
+scope: []
+source_files:
+    - Mini_Project/backend/src/main/resources/application.properties
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DatasetService.java
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DetectionService.java
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/ReportService.java
+    - Mini_Project/ml-service/app.py
+    - Mini_Project/ml-service/predict.py
+depends_on: []
+related_to: []

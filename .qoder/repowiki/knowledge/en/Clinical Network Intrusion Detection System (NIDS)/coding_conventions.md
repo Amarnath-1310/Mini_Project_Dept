@@ -1,0 +1,3 @@
+- DTOs are used to decouple API contracts from internal JPA entities, with mappers or manual conversion in services.
+- Services act as the primary orchestration layer, handling business logic and external service calls (e.g., `DetectionService` calling the ML API).
+- Repositories extend Spring Data JPA interfaces, relying on method-name derivation for standard CRUD operations.

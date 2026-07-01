@@ -154,15 +154,82 @@ export async function mlDashboardStats() {
   return res.json();
 }
 
-// ── Traffic Upload (ML Service) ─────────────────────────────────────────────
+// ── Dataset Upload & Analysis APIs (Spring Boot) ─────────────────────────
 
 export async function uploadDataset(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${SPRING_BOOT_URL}/api/dataset/upload`, {
+    method: 'POST',
+    headers: { ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json();
+}
+
+export async function analyzeDataset(id) {
+  const res = await fetch(`${SPRING_BOOT_URL}/api/dataset/${id}/analyze`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error('Analysis failed');
+  return res.json();
+}
+
+export async function getAnalysis(id) {
+  const res = await fetch(`${SPRING_BOOT_URL}/api/dataset/${id}/analysis`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch analysis');
+  return res.json();
+}
+
+export async function getDatasets() {
+  const res = await fetch(`${SPRING_BOOT_URL}/api/datasets`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch datasets');
+  return res.json();
+}
+
+export async function downloadReport(id) {
+  const res = await fetch(`${SPRING_BOOT_URL}/api/dataset/${id}/report`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to download report');
+  return res.blob();
+}
+
+// ── ML Service Direct Upload (fallback) ──────────────────────────────────
+
+export async function mlUploadDataset(file) {
   const formData = new FormData();
   formData.append('file', file);
   const res = await fetch(`${ML_SERVICE_URL}/api/upload`, {
     method: 'POST',
     body: formData,
   });
-  if (!res.ok) throw new Error('Upload failed');
+  if (!res.ok) throw new Error('ML Upload failed');
+  return res.json();
+}
+
+export async function mlAnalyzeDataset(datasetId) {
+  const res = await fetch(`${ML_SERVICE_URL}/api/analyze/${datasetId}`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('ML Analysis failed');
+  return res.json();
+}
+
+export async function mlGetAnalysis(datasetId) {
+  const res = await fetch(`${ML_SERVICE_URL}/api/analysis/${datasetId}`);
+  if (!res.ok) throw new Error('Failed to fetch ML analysis');
+  return res.json();
+}
+
+export async function mlGetReportData(datasetId) {
+  const res = await fetch(`${ML_SERVICE_URL}/api/report/${datasetId}`);
+  if (!res.ok) throw new Error('Failed to fetch report data');
   return res.json();
 }

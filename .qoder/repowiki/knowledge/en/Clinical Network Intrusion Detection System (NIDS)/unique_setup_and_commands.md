@@ -1,0 +1,2 @@
+- **Startup:** Use `Mini_Project\start_all.bat` to launch the ML Service (port 8000) and Frontend (port 5173). The Backend (port 8080) must be started separately via `mvn spring-boot:run`.
+- **ML Model:** Requires pre-trained artifacts in `ml-service/model/` (e.g., `xgboost_nids_model.pkl`, `scaler.pkl`).

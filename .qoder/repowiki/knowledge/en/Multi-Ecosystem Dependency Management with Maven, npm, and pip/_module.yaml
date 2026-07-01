@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: dependency_management
+title: Multi-Ecosystem Dependency Management with Maven, npm, and pip
+scope: []
+source_files:
+    - Mini_Project/backend/pom.xml
+    - Mini_Project/backend/.mvn/wrapper/maven-wrapper.properties
+    - Mini_Project/clinical-nids-dashboard/package.json
+    - Mini_Project/clinical-nids-dashboard/package-lock.json
+    - Mini_Project/ml-service/requirements.txt
+depends_on: []
+related_to: []

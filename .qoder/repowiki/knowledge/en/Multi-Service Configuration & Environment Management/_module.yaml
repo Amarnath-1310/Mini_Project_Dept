@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: configuration_system
+title: Multi-Service Configuration & Environment Management
+scope: []
+source_files:
+    - Mini_Project/backend/src/main/resources/application.properties
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/config/SecurityConfig.java
+    - Mini_Project/ml-service/app.py
+    - Mini_Project/clinical-nids-dashboard/src/data/api.js
+    - Mini_Project/start_all.bat
+    - Mini_Project/backend/pom.xml
+depends_on: []
+related_to: []

@@ -1,0 +1,4 @@
+- **Backend (Spring Boot):** REST API handling authentication (JWT), dataset management, and detection orchestration. It acts as a gateway to the ML service via `WebClient` and persists results in PostgreSQL using Spring Data JPA.
+- **ML Service (FastAPI):** Independent Python microservice hosting the XGBoost model and SHAP explainer. It exposes endpoints for single-flow prediction and bulk dataset analysis (`prediction_engine.py`).
+- **Frontend (React + Vite):** Single-page application providing a dashboard for monitoring traffic, visualizing alerts, and managing dataset uploads. It communicates with both the Backend (auth/state) and ML Service (analysis/prediction).
+- **Integration:** The Backend delegates heavy ML inference to the FastAPI service, storing only metadata and results in the database, while the Frontend aggregates data from both services for visualization.

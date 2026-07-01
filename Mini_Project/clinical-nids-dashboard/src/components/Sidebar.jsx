@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Shield, Activity, Bell, BarChart3,
-  Search, Settings, LogOut, ChevronRight
+  Search, Settings, LogOut, ChevronRight, Upload
 } from 'lucide-react'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/upload', label: 'Dataset Upload', icon: Upload },
   { to: '/monitoring', label: 'Threat Monitoring', icon: Activity },
   { to: '/alerts', label: 'Alert Management', icon: Bell },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },

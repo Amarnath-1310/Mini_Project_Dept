@@ -1,0 +1,3 @@
+- **Backend:** Spring Boot 3.3.1, Spring Security (JWT via jjwt 0.12.5), Spring Data JPA, PostgreSQL/H2.
+- **ML Service:** FastAPI, XGBoost, SHAP, Scikit-learn, Pandas, PyArrow.
+- **Frontend:** React 18, Vite, Tailwind CSS, Recharts, React Router.

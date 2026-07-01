@@ -6,6 +6,8 @@ import Monitoring from './pages/Monitoring'
 import Alerts from './pages/Alerts'
 import Analytics from './pages/Analytics'
 import ThreatDetails from './pages/ThreatDetails'
+import DatasetUpload from './pages/DatasetUpload'
+import AnalysisResult from './pages/AnalysisResult'
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="upload" element={<DatasetUpload />} />
+        <Route path="analysis/:datasetId" element={<AnalysisResult />} />
         <Route path="monitoring" element={<Monitoring />} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="analytics" element={<Analytics />} />

@@ -1,0 +1,1 @@
+A full-stack platform for real-time and batch network intrusion detection using XGBoost, SHAP explainability, and a React dashboard.

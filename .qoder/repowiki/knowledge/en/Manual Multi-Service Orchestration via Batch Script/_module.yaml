@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: build_system
+title: Manual Multi-Service Orchestration via Batch Script
+scope: []
+source_files:
+    - Mini_Project/start_all.bat
+    - Mini_Project/backend/pom.xml
+    - Mini_Project/clinical-nids-dashboard/package.json
+    - Mini_Project/ml-service/requirements.txt
+    - Mini_Project/backend/.mvn/wrapper/maven-wrapper.properties
+depends_on: []
+related_to: []

@@ -1,59 +1,106 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Network, AlertTriangle, ShieldAlert, Brain, Server,
-  TrendingUp, TrendingDown, ArrowUpRight, RefreshCw
+  TrendingUp, TrendingDown, ArrowUpRight, RefreshCw,
+  Database, Upload, FileText
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, BarChart, Bar, Legend
+  PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts'
-import { threatData, trafficData, attackDistribution, protocolUsage, aiFeatures } from '../data/mockData'
+import { trafficData, attackDistribution as mockAttackDist, aiFeatures } from '../data/mockData'
+import { getDatasets, getAnalysis } from '../data/api'
 import { useNavigate } from 'react-router-dom'
 
-const stats = [
-  { label: 'Total Network Flows', value: '245,890', icon: Network, change: '+12.5%', up: true, color: 'text-cyber-blue', bg: 'bg-cyber-blue/15' },
-  { label: 'Detected Threats', value: '342', icon: AlertTriangle, change: '-8.2%', up: false, color: 'text-cyber-orange', bg: 'bg-cyber-orange/15' },
-  { label: 'Critical Alerts', value: '18', icon: ShieldAlert, change: '+3.1%', up: true, color: 'text-cyber-red', bg: 'bg-cyber-red/15' },
-  { label: 'Model Accuracy', value: '98.7%', icon: Brain, change: '+0.3%', up: true, color: 'text-cyber-purple', bg: 'bg-cyber-purple/15' },
-  { label: 'Active Devices', value: '156', icon: Server, change: '+5', up: true, color: 'text-cyber-cyan', bg: 'bg-cyber-cyan/15' },
-]
+const ATTACK_COLORS = {
+  'Benign': '#22c55e', 'DDoS': '#ef4444', 'DoS': '#f97316',
+  'PortScan': '#8b5cf6', 'Brute Force': '#06b6d4', 'Botnet': '#eab308',
+  'Infiltration': '#ec4899', 'Web Attack': '#14b8a6',
+}
+
+function getAttackColor(name) {
+  return ATTACK_COLORS[name] || '#3b82f6'
+}
 
 function SeverityBadge({ severity }) {
   const cls = severity === 'CRITICAL' ? 'severity-critical' : severity === 'HIGH' ? 'severity-high' : severity === 'MEDIUM' ? 'severity-medium' : 'severity-low'
   return <span className={cls}>{severity}</span>
 }
 
-function StatusBadge({ status }) {
-  const colors = {
-    Blocked: 'text-cyber-green bg-cyber-green/10',
-    Monitoring: 'text-cyber-blue bg-cyber-blue/10',
-    Investigating: 'text-cyber-orange bg-cyber-orange/10',
-    Quarantined: 'text-cyber-purple bg-cyber-purple/10',
-  }
-  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors[status] || 'text-gray-400 bg-gray-400/10'}`}>{status}</span>
-}
-
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('all')
+  const [datasets, setDatasets] = useState([])
+  const [latestAnalysis, setLatestAnalysis] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  async function fetchData() {
+    setLoading(true)
+    try {
+      const dsList = await getDatasets()
+      setDatasets(dsList || [])
+      if (dsList && dsList.length > 0) {
+        const latest = dsList[0]
+        if (latest.status === 'COMPLETED' && latest.id) {
+          const analysis = await getAnalysis(latest.id)
+          setLatestAnalysis(analysis)
+        }
+      }
+    } catch {
+      console.warn('Backend unavailable, using mock data')
+    }
+    setLoading(false)
+  }
+
+  const hasRealData = !!latestAnalysis
+  const summary = latestAnalysis?.security_summary || latestAnalysis || {}
+  const attackDist = latestAnalysis?.attack_distribution || latestAnalysis?.attackDistribution || {}
+  const globalFeatures = latestAnalysis?.global_feature_importance || latestAnalysis?.globalFeatureImportance || aiFeatures.map(f => ({ name: f.name, impact: f.importance / 100, level: f.importance > 70 ? 'HIGH' : f.importance > 50 ? 'MEDIUM' : 'LOW' }))
+  const predictions = latestAnalysis?.predictions || []
+
+  const totalFlows = summary.total_traffic || summary.totalRecords || 245890
+  const totalAttacks = summary.attack_count || summary.attackCount || 342
+  const modelAccuracy = summary.model_accuracy || summary.modelAccuracy || 0.987
+  const riskLevel = summary.risk_level || summary.riskLevel || 'LOW'
+
+  const stats = [
+    { label: 'Total Network Flows', value: totalFlows.toLocaleString(), icon: Network, change: hasRealData ? 'From dataset' : 'Mock data', up: true, color: 'text-cyber-blue', bg: 'bg-cyber-blue/15' },
+    { label: 'Detected Threats', value: totalAttacks.toLocaleString(), icon: AlertTriangle, change: hasRealData ? `${((totalAttacks / totalFlows) * 100).toFixed(1)}%` : 'Mock', up: false, color: 'text-cyber-orange', bg: 'bg-cyber-orange/15' },
+    { label: 'Risk Level', value: riskLevel, icon: ShieldAlert, change: hasRealData ? 'From analysis' : 'Mock', up: riskLevel !== 'CRITICAL', color: 'text-cyber-red', bg: 'bg-cyber-red/15' },
+    { label: 'Model Accuracy', value: `${(modelAccuracy * 100).toFixed(1)}%`, icon: Brain, change: '+0.3%', up: true, color: 'text-cyber-purple', bg: 'bg-cyber-purple/15' },
+    { label: 'Datasets Analyzed', value: datasets.length || 0, icon: Database, change: 'Total uploads', up: true, color: 'text-cyber-cyan', bg: 'bg-cyber-cyan/15' },
+  ]
+
+  const pieData = Object.keys(attackDist).length > 0
+    ? Object.entries(attackDist).map(([name, value]) => ({
+        name, value: typeof value === 'number' ? value : 0, color: getAttackColor(name)
+      }))
+    : mockAttackDist
+
+  const barData = pieData.filter(d => d.name !== 'Benign')
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Security Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-1">Real-time network intrusion detection overview</p>
+          <p className="text-sm text-gray-400 mt-1">
+            {hasRealData ? `Latest analysis: ${latestAnalysis?.filename || 'dataset'}` : 'Upload a dataset to see real analysis results'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">Last updated: 2 min ago</span>
-          <button className="btn-secondary flex items-center gap-2 text-xs py-2">
+          <button onClick={() => navigate('/upload')} className="btn-primary flex items-center gap-2 text-xs py-2">
+            <Upload className="w-3.5 h-3.5" /> Upload Dataset
+          </button>
+          <button onClick={fetchData} className="btn-secondary flex items-center gap-2 text-xs py-2">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
         </div>
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map(({ label, value, icon: Icon, change, up, color, bg }) => (
           <div key={label} className="stat-card">
@@ -72,19 +119,41 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Traffic graph + AI panel row */}
+      {datasets.length > 0 && (
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-semibold text-white mb-3">Recent Datasets</h3>
+          <div className="space-y-2">
+            {datasets.slice(0, 5).map((ds) => (
+              <div key={ds.id}
+                onClick={() => ds.status === 'COMPLETED' && navigate(`/analysis/${ds.id}`)}
+                className="flex items-center justify-between bg-navy-700/30 rounded-lg p-3 border border-navy-600/30 hover:border-cyber-blue/30 transition-all cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-cyber-blue" />
+                  <div>
+                    <p className="text-sm text-white font-medium">{ds.filename}</p>
+                    <p className="text-[11px] text-gray-500">
+                      {ds.totalRecords ? `${ds.totalRecords.toLocaleString()} records` : 'Unknown size'} · {ds.uploadedTime ? new Date(ds.uploadedTime).toLocaleDateString() : ''}
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  ds.status === 'COMPLETED' ? 'text-cyber-green bg-cyber-green/10' :
+                  ds.status === 'FAILED' ? 'text-red-400 bg-red-400/10' :
+                  ds.status === 'ANALYZING' ? 'text-cyber-blue bg-cyber-blue/10' :
+                  'text-gray-400 bg-gray-400/10'
+                }`}>{ds.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Traffic graph */}
         <div className="xl:col-span-2 glass-card p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-white">Network Traffic Activity</h3>
               <p className="text-xs text-gray-400">24-hour incoming/outgoing flow</p>
-            </div>
-            <div className="flex gap-2">
-              {['24h', '7d', '30d'].map(t => (
-                <button key={t} className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${t === '24h' ? 'bg-cyber-blue/20 text-cyber-blue' : 'text-gray-400 hover:text-gray-200'}`}>{t}</button>
-              ))}
             </div>
           </div>
           <ResponsiveContainer width="100%" height={280}>
@@ -109,58 +178,45 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* AI Explainability panel */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-1">AI Prediction Explanation</h3>
-          <p className="text-xs text-gray-400 mb-4">Why was this traffic flagged?</p>
-
-          <div className="bg-navy-700/40 rounded-lg p-3 mb-4 border border-navy-600/40">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-gray-400">Detected Attack</span>
-              <span className="text-xs font-semibold text-cyber-orange">Port Scanning</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">Confidence</span>
-              <span className="text-sm font-bold text-white">94%</span>
-            </div>
-          </div>
-
-          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider mb-3">Feature Importance (SHAP)</p>
+          <h3 className="text-sm font-semibold text-white mb-1">AI Feature Importance</h3>
+          <p className="text-xs text-gray-400 mb-4">SHAP-based global feature importance</p>
           <div className="space-y-3">
-            {aiFeatures.map(({ name, importance }) => (
-              <div key={name}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-300">{name}</span>
-                  <span className="text-gray-400 font-mono">{importance}%</span>
+            {globalFeatures.slice(0, 7).map((f, i) => {
+              const name = f.name || f.feature
+              const importance = typeof f.impact === 'number' ? Math.min(100, f.impact * 100) : (f.importance || 0)
+              return (
+                <div key={i}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-300">{name}</span>
+                    <span className="text-gray-400 font-mono">{importance.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 bg-navy-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-700"
+                      style={{ width: `${importance}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 bg-navy-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-700"
-                    style={{ width: `${importance}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
-
           <button
-            onClick={() => navigate('/monitoring')}
+            onClick={() => navigate('/upload')}
             className="mt-5 w-full btn-secondary text-xs flex items-center justify-center gap-2"
           >
-            View All Detections <ArrowUpRight className="w-3.5 h-3.5" />
+            Upload New Dataset <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Attack Analytics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pie chart */}
         <div className="glass-card p-5">
           <h3 className="text-sm font-semibold text-white mb-4">Attack Distribution</h3>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={attackDistribution} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
-                {attackDistribution.map((entry, i) => (
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
+                {pieData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
@@ -168,7 +224,7 @@ export default function Dashboard() {
             </PieChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-3 mt-2 justify-center">
-            {attackDistribution.map(d => (
+            {pieData.map(d => (
               <div key={d.name} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
                 <span className="text-[11px] text-gray-400">{d.name}</span>
@@ -177,105 +233,95 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Protocol bar chart */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Protocol Usage</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={protocolUsage} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1b2741" horizontal={false} />
-              <XAxis type="number" stroke="#4b5563" fontSize={11} />
-              <YAxis dataKey="name" type="category" stroke="#4b5563" fontSize={11} width={50} />
-              <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
-              <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3 className="text-sm font-semibold text-white mb-4">Attack Frequency</h3>
+          {barData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={barData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#1b2741" horizontal={false} />
+                <XAxis type="number" stroke="#4b5563" fontSize={11} />
+                <YAxis dataKey="name" type="category" stroke="#4b5563" fontSize={11} width={80} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f1729', border: '1px solid #1b2741', borderRadius: '8px', fontSize: '12px' }} />
+                <Bar dataKey={barData[0]?.count !== undefined ? 'count' : 'value'} radius={[0, 4, 4, 0]}>
+                  {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-8">No attacks detected</p>
+          )}
         </div>
 
-        {/* Mini threat stats */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Threat Breakdown (24h)</h3>
+          <h3 className="text-sm font-semibold text-white mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            {[
-              { label: 'DDoS Attempts', count: 87, color: 'bg-cyber-red', pct: 'w-[72%]' },
-              { label: 'Port Scans', count: 64, color: 'bg-cyber-orange', pct: 'w-[53%]' },
-              { label: 'Brute Force', count: 52, color: 'bg-cyber-blue', pct: 'w-[43%]' },
-              { label: 'Malware C2', count: 38, color: 'bg-cyber-purple', pct: 'w-[31%]' },
-              { label: 'SQL Injection', count: 29, color: 'bg-cyber-cyan', pct: 'w-[24%]' },
-            ].map(t => (
-              <div key={t.label}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-300">{t.label}</span>
-                  <span className="text-gray-400 font-mono">{t.count}</span>
-                </div>
-                <div className="h-1.5 bg-navy-700 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${t.color} ${t.pct}`} />
-                </div>
-              </div>
-            ))}
+            <button onClick={() => navigate('/upload')} className="w-full btn-secondary text-xs flex items-center gap-3 py-3">
+              <Upload className="w-4 h-4 text-cyber-blue" /> Upload New Dataset
+            </button>
+            <button onClick={() => navigate('/alerts')} className="w-full btn-secondary text-xs flex items-center gap-3 py-3">
+              <ShieldAlert className="w-4 h-4 text-cyber-orange" /> View Alerts
+            </button>
+            <button onClick={() => navigate('/analytics')} className="w-full btn-secondary text-xs flex items-center gap-3 py-3">
+              <TrendingUp className="w-4 h-4 text-cyber-purple" /> Attack Analytics
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Threat Detection Table */}
-      <div className="glass-card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Recent Threat Detections</h3>
-            <p className="text-xs text-gray-400">Latest AI-classified network events</p>
+      {predictions.length > 0 && (
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-white">Recent Predictions</h3>
+              <p className="text-xs text-gray-400">Latest AI-classified network flows from dataset analysis</p>
+            </div>
+            <button onClick={() => navigate('/upload')} className="btn-secondary text-xs py-1.5">
+              View Full Analysis
+            </button>
           </div>
-          <div className="flex gap-2">
-            {['all', 'critical', 'high'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all ${activeTab === tab ? 'bg-cyber-blue/20 text-cyber-blue' : 'text-gray-400 hover:text-gray-200'}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-navy-600/60 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left py-3 px-3 font-medium">Time</th>
-                <th className="text-left py-3 px-3 font-medium">Source</th>
-                <th className="text-left py-3 px-3 font-medium">Destination</th>
-                <th className="text-left py-3 px-3 font-medium">Protocol</th>
-                <th className="text-left py-3 px-3 font-medium">Attack Type</th>
-                <th className="text-left py-3 px-3 font-medium">Confidence</th>
-                <th className="text-left py-3 px-3 font-medium">Severity</th>
-                <th className="text-left py-3 px-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {threatData
-                .filter(t => activeTab === 'all' || (activeTab === 'critical' && t.severity === 'CRITICAL') || (activeTab === 'high' && t.severity === 'HIGH'))
-                .map(t => (
-                <tr key={t.id} className="border-b border-navy-600/30 hover:bg-navy-700/30 transition-colors cursor-pointer" onClick={() => navigate('/threats/1')}>
-                  <td className="py-3 px-3 text-gray-300 font-mono text-xs">{t.time}</td>
-                  <td className="py-3 px-3 text-gray-300 text-xs">{t.source}</td>
-                  <td className="py-3 px-3 text-gray-300 text-xs">{t.destination}</td>
-                  <td className="py-3 px-3"><span className="text-xs bg-navy-700 text-gray-300 px-2 py-0.5 rounded">{t.protocol}</span></td>
-                  <td className="py-3 px-3 text-white text-xs font-medium">{t.attackType}</td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-1.5 bg-navy-700 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-cyber-blue" style={{ width: `${t.confidence}%` }} />
-                      </div>
-                      <span className="text-xs text-gray-300 font-mono">{t.confidence}%</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3"><SeverityBadge severity={t.severity} /></td>
-                  <td className="py-3 px-3"><StatusBadge status={t.status} /></td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-navy-600/60 text-xs text-gray-500 uppercase tracking-wider">
+                  <th className="text-left py-3 px-3 font-medium">Flow #</th>
+                  <th className="text-left py-3 px-3 font-medium">Attack Type</th>
+                  <th className="text-left py-3 px-3 font-medium">Confidence</th>
+                  <th className="text-left py-3 px-3 font-medium">Severity</th>
+                  <th className="text-left py-3 px-3 font-medium">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {predictions.slice(0, 10).map((p, i) => {
+                  const attackType = p.attackType || p.prediction || 'Unknown'
+                  const conf = p.confidence || 0
+                  const severity = p.severity || 'NONE'
+                  const isAttack = p.is_attack || p.isAttack
+                  return (
+                    <tr key={i} className="border-b border-navy-600/30 hover:bg-navy-700/30 transition-colors">
+                      <td className="py-2.5 px-3 text-gray-300 font-mono text-xs">{p.flow_index ?? p.flowIndex ?? i + 1}</td>
+                      <td className="py-2.5 px-3 text-white text-xs font-medium">{attackType}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-1.5 bg-navy-700 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-cyber-blue" style={{ width: `${conf * 100}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-300 font-mono">{(conf * 100).toFixed(1)}%</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3"><SeverityBadge severity={severity} /></td>
+                      <td className="py-2.5 px-3">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isAttack ? 'text-cyber-red bg-cyber-red/10' : 'text-cyber-green bg-cyber-green/10'}`}>
+                          {isAttack ? 'Detected' : 'Normal'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

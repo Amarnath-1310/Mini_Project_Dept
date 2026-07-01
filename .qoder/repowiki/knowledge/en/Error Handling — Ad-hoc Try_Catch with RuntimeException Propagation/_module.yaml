@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: error_handling
+title: Error Handling — Ad-hoc Try/Catch with RuntimeException Propagation
+scope: []
+source_files:
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DetectionService.java
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/DatasetService.java
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/service/ReportService.java
+    - Mini_Project/backend/src/main/java/com/clinicalnids/backend/security/JwtTokenProvider.java
+    - Mini_Project/ml-service/app.py
+    - Mini_Project/ml-service/predict.py
+    - Mini_Project/ml-service/prediction_engine.py
+    - Mini_Project/clinical-nids-dashboard/src/data/api.js
+depends_on: []
+related_to: []

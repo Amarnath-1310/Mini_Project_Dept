@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: frontend_style
+title: Cyber-Security Themed React Dashboard with Tailwind CSS
+scope: []
+source_files:
+    - Mini_Project/clinical-nids-dashboard/tailwind.config.js
+    - Mini_Project/clinical-nids-dashboard/src/index.css
+    - Mini_Project/clinical-nids-dashboard/src/components/Layout.jsx
+    - Mini_Project/clinical-nids-dashboard/src/components/Sidebar.jsx
+    - Mini_Project/clinical-nids-dashboard/src/pages/Dashboard.jsx
+    - Mini_Project/clinical-nids-dashboard/package.json
+depends_on: []
+related_to: []
