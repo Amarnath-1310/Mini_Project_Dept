@@ -98,6 +98,8 @@ public class DashboardController {
                 .globalFeatureImportance(globalFeatures)
                 .uploadedTime(dataset.getUploadedTime() != null ? dataset.getUploadedTime().toString() : "")
                 .analyzedTime(dataset.getAnalyzedTime() != null ? dataset.getAnalyzedTime().toString() : "")
+                .fileType(dataset.getFileType() != null ? dataset.getFileType() : "unknown")
+                .fileSize(dataset.getFileSize() != null ? dataset.getFileSize() : 0)
                 .build();
 
         return ResponseEntity.ok(summary);
@@ -139,6 +141,8 @@ public class DashboardController {
                     map.put("totalRecords", ds.getTotalRecords() != null ? ds.getTotalRecords() : 0);
                     map.put("uploadedTime", ds.getUploadedTime() != null ? ds.getUploadedTime().toString() : "");
                     map.put("analyzedTime", ds.getAnalyzedTime() != null ? ds.getAnalyzedTime().toString() : "");
+                    map.put("fileType", ds.getFileType() != null ? ds.getFileType() : "unknown");
+                    map.put("fileSize", ds.getFileSize() != null ? ds.getFileSize() : 0);
                     return map;
                 })
                 .collect(Collectors.toList());

@@ -27,6 +27,8 @@ public class DashboardSummary {
     private List<FeatureEntry> globalFeatureImportance;
     private String uploadedTime;
     private String analyzedTime;
+    private String fileType;
+    private Long fileSize;
 
     @Data
     @Builder

@@ -4,11 +4,11 @@
 
 @layer base {
   * {
-    @apply border-navy-600;
+    @apply border-slate-700/60;
   }
   
   body {
-    @apply bg-navy-900 text-gray-100;
+    @apply bg-navy-900 text-slate-100 antialiased;
   }
 
   ::-webkit-scrollbar {
@@ -21,7 +21,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-navy-500 rounded-full;
+    @apply bg-slate-700 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -31,43 +31,43 @@
 
 @layer components {
   .glass-card {
-    @apply bg-navy-800/60 backdrop-blur-md border border-navy-600/50 rounded-xl shadow-lg;
+    @apply bg-navy-800/90 backdrop-blur-md border border-slate-700/60 rounded-xl shadow-xl;
   }
 
   .stat-card {
-    @apply glass-card p-5 hover:border-cyber-blue/40 transition-all duration-300 hover:shadow-cyber-blue/10 hover:shadow-xl;
+    @apply glass-card p-5 hover:border-cyber-blue/60 transition-all duration-300 hover:shadow-cyber-blue/15 hover:shadow-xl;
   }
 
   .severity-critical {
-    @apply text-red-400 bg-red-400/10 border border-red-400/30 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply text-rose-300 bg-rose-950/70 border border-rose-500/50 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide;
   }
 
   .severity-high {
-    @apply text-orange-400 bg-orange-400/10 border border-orange-400/30 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply text-orange-300 bg-orange-950/70 border border-orange-500/50 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide;
   }
 
   .severity-medium {
-    @apply text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply text-amber-300 bg-amber-950/70 border border-amber-500/50 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide;
   }
 
   .severity-low {
-    @apply text-green-400 bg-green-400/10 border border-green-400/30 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply text-emerald-300 bg-emerald-950/70 border border-emerald-500/50 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide;
   }
 
   .btn-primary {
-    @apply bg-cyber-blue hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-cyber-blue/30;
+    @apply bg-cyber-blue hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-cyber-blue/40 active:scale-[0.98];
   }
 
   .btn-secondary {
-    @apply bg-navy-600 hover:bg-navy-500 text-gray-200 font-medium px-4 py-2 rounded-lg transition-all duration-200 border border-navy-500/50;
+    @apply bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium px-4 py-2 rounded-lg transition-all duration-200 border border-slate-600/80 active:scale-[0.98];
   }
 
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-red-600/30;
+    @apply bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-rose-600/40 active:scale-[0.98];
   }
 
   .input-field {
-    @apply w-full bg-navy-700/60 border border-navy-600 rounded-lg px-4 py-2.5 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyber-blue/60 focus:border-transparent transition-all duration-200;
+    @apply w-full bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyber-blue/80 focus:border-transparent transition-all duration-200;
   }
 }
 
@@ -75,4 +75,22 @@
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-cyber-blue to-cyber-cyan;
   }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }

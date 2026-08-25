@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react'
 import {
   Network, AlertTriangle, ShieldAlert, Brain,
   TrendingUp, ArrowUpRight, RefreshCw,
-  Database, Upload, FileText, AlertCircle
+  Database, Upload, FileText, AlertCircle, Clock
 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
 } from 'recharts'
 import { getLatestDashboardSummary, getDashboardDatasets } from '../data/api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { formatSize, formatDate } from '../utils/formatters'
 
 const ATTACK_COLORS = {
   'Benign': '#22c55e', 'DDoS': '#ef4444', 'DoS': '#f97316',
@@ -20,11 +21,19 @@ function getAttackColor(n) { return ATTACK_COLORS[n] || '#3b82f6' }
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [summary, setSummary] = useState(null)
   const [datasets, setDatasets] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [location.pathname])
+
+  // Auto-refresh when navigating back to dashboard
+  useEffect(() => {
+    const handleFocus = () => fetchData()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   async function fetchData() {
     setLoading(true)
@@ -72,7 +81,7 @@ export default function Dashboard() {
         <div className="glass-card p-12 text-center">
           <AlertCircle className="w-16 h-16 text-cyber-blue mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-semibold text-white mb-2">No Analysis Data Available</h3>
-          <p className="text-sm text-gray-400 mb-6">Upload a parquet dataset file to generate dashboard results.</p>
+          <p className="text-sm text-gray-400 mb-6">Upload a dataset file to generate dashboard results.</p>
           <button onClick={() => navigate('/upload')} className="btn-primary flex items-center gap-2 text-sm mx-auto"><Upload className="w-4 h-4" /> Upload Your First Dataset</button>
         </div>
       )}
@@ -106,7 +115,12 @@ export default function Dashboard() {
                     <FileText className="w-4 h-4 text-cyber-blue" />
                     <div>
                       <p className="text-sm text-white font-medium">{ds.filename}</p>
-                      <p className="text-[11px] text-gray-500">{ds.totalRecords ? `${ds.totalRecords.toLocaleString()} records` : ''} {ds.uploadedTime ? new Date(ds.uploadedTime).toLocaleDateString() : ''}</p>
+                      <p className="text-[11px] text-gray-500">
+                        {ds.totalRecords ? `${Number(ds.totalRecords).toLocaleString()} records` : ''}
+                        {ds.fileType ? ` · ${ds.fileType}` : ''}
+                        {ds.fileSize ? ` · ${formatSize(ds.fileSize)}` : ''}
+                        {ds.uploadedTime ? ` · ${formatDate(ds.uploadedTime)}` : ''}
+                      </p>
                     </div>
                   </div>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ds.status === 'COMPLETED' ? 'text-cyber-green bg-cyber-green/10' : ds.status === 'FAILED' ? 'text-red-400 bg-red-400/10' : 'text-gray-400 bg-gray-400/10'}`}>{ds.status}</span>

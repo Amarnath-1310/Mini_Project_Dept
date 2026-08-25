@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Download, FileText, Shield, AlertTriangle, Activity,
-  Brain, Database, Loader2, Filter, Search, BarChart3
+  Brain, Database, Loader2, Filter, Search, BarChart3, ChevronDown
 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
-import { getAnalysis, downloadReport } from '../data/api'
+import { getAnalysis, downloadReport, downloadAndSave } from '../data/api'
+import { useToast } from '../contexts/ToastContext'
+import { formatSize, formatDate, formatNumber } from '../utils/formatters'
 
 const ATTACK_COLORS = {
   'Benign': '#22c55e', 'DDoS': '#ef4444', 'DoS': '#f97316',
@@ -29,14 +31,24 @@ export default function AnalysisResult() {
   const { datasetId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
+  const toast = useToast()
   const [data, setData] = useState(location.state?.mlResult || null)
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState('')
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState('')
+  const [exportOpen, setExportOpen] = useState(false)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+  const exportRef = useRef(null)
   const PAGE_SIZE = 25
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (exportRef.current && !exportRef.current.contains(e.target)) setExportOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   useEffect(() => {
     if (data) return
@@ -50,20 +62,27 @@ export default function AnalysisResult() {
       .finally(() => setLoading(false))
   }, [datasetId, data])
 
-  const handleDownloadReport = async () => {
-    setDownloading(true)
+  const handleDownloadReport = async (format) => {
+    setDownloading(format)
+    setExportOpen(false)
     try {
-      const blob = await downloadReport(datasetId)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `ClinicalNIDS_Report_${datasetId}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
+      if (format === 'json') {
+        // Download JSON as file
+        const { getReportData } = await import('../data/api')
+        const jsonData = await getReportData(datasetId)
+        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url; a.download = `ClinicalNIDS_Report_${datasetId}.json`; a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        await downloadAndSave(datasetId, format)
+      }
+      toast.success(`${format.toUpperCase()} report downloaded successfully`)
     } catch {
-      setError('Failed to download PDF report. Make sure the backend is running.')
+      toast.error(`Failed to download ${format.toUpperCase()} report`)
     }
-    setDownloading(false)
+    setDownloading('')
   }
 
   if (loading) {
@@ -150,14 +169,36 @@ export default function AnalysisResult() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleDownloadReport}
-            disabled={downloading}
-            className="btn-primary flex items-center gap-2 text-xs py-2"
-          >
-            {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            Download PDF Report
-          </button>
+          {/* Export dropdown */}
+          <div className="relative" ref={exportRef}>
+            <button
+              onClick={() => setExportOpen(!exportOpen)}
+              disabled={!!downloading}
+              className="btn-secondary flex items-center gap-2 text-xs py-2"
+            >
+              {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              Export Report <ChevronDown className="w-3 h-3" />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 glass-card p-1 z-50 border border-navy-600/50 shadow-xl">
+                {[
+                  { format: 'pdf', label: 'PDF Report', icon: '📄' },
+                  { format: 'excel', label: 'Excel Report', icon: '📊' },
+                  { format: 'csv', label: 'CSV Report', icon: '📋' },
+                  { format: 'json', label: 'JSON Data', icon: '{ }' },
+                ].map(({ format, label, icon }) => (
+                  <button
+                    key={format}
+                    onClick={() => handleDownloadReport(format)}
+                    disabled={!!downloading}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-navy-700/60 hover:text-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <span className="w-5 text-center">{icon}</span> {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

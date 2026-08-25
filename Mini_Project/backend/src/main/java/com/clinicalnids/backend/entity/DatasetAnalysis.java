@@ -34,6 +34,15 @@ public class DatasetAnalysis {
     @Column(nullable = false)
     private String filePath;
 
+    /** File type: parquet, csv, tsv, excel, feather, text */
+    private String fileType;
+
+    /** File size in bytes */
+    private Long fileSize;
+
+    /** ML service dataset ID for progress tracking correlation */
+    private String mlDatasetId;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private DatasetStatus status;

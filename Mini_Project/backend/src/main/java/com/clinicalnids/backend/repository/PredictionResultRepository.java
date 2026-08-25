@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface PredictionResultRepository extends JpaRepository<PredictionResult, Long> {
     Optional<PredictionResult> findByDatasetId(Long datasetId);
     List<PredictionResult> findAllByOrderByCreatedTimeDesc();
+    void deleteByDatasetId(Long datasetId);
 }

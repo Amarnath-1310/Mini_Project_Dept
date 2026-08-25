@@ -6,8 +6,8 @@
 import { apiGet, apiPost, apiUpload } from './axios';
 
 /**
- * Upload a parquet dataset file.
- * @param {File} file - The parquet file to upload.
+ * Upload a dataset file (supports CSV, Excel, Parquet, Feather, TSV, TXT).
+ * @param {File} file - The dataset file to upload.
  * @returns {Promise<{datasetId: number, filename: string, status: string}>}
  */
 export async function uploadDataset(file) {
@@ -23,6 +23,15 @@ export async function uploadDataset(file) {
  */
 export async function analyzeDataset(datasetId) {
   return apiPost(`/api/dataset/${datasetId}/analyze`);
+}
+
+/**
+ * Get analysis progress for a dataset.
+ * @param {number} datasetId - The dataset ID.
+ * @returns {Promise<object>} Progress info with steps, percent, speed, etc.
+ */
+export async function getAnalysisProgress(datasetId) {
+  return apiGet(`/api/dataset/${datasetId}/progress`);
 }
 
 /**
@@ -77,3 +86,12 @@ export async function getAlertById(id) {
 export async function markAlertReviewed(id) {
   return apiPost(`/api/alerts/${id}/review`);
 }
+
+/**
+ * Delete an uploaded dataset and its analysis results.
+ * @param {number} id - Dataset ID.
+ */
+export async function deleteDataset(id) {
+  return apiDelete(`/api/dataset/${id}`);
+}
+

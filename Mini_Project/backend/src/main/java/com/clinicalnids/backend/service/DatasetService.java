@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -31,6 +32,10 @@ import java.util.stream.Collectors;
 public class DatasetService {
 
     private static final Logger log = LoggerFactory.getLogger(DatasetService.class);
+
+    private static final Set<String> SUPPORTED_EXTENSIONS = Set.of(
+            ".parquet", ".csv", ".tsv", ".xlsx", ".xls", ".feather", ".txt"
+    );
 
     private final DatasetAnalysisRepository datasetRepo;
     private final PredictionResultRepository predResultRepo;
@@ -56,17 +61,38 @@ public class DatasetService {
     }
 
     /**
-     * Upload a parquet dataset file.
-     * Stores the file locally and registers it in the database.
+     * Detect file type from filename extension.
+     */
+    private String detectFileType(String filename) {
+        if (filename == null) return "unknown";
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".parquet")) return "parquet";
+        if (lower.endsWith(".csv")) return "csv";
+        if (lower.endsWith(".tsv")) return "tsv";
+        if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return "excel";
+        if (lower.endsWith(".feather")) return "feather";
+        if (lower.endsWith(".txt")) return "text";
+        return "unknown";
+    }
+
+    /**
+     * Upload a dataset file (supports multiple formats).
      */
     public DatasetUploadResponse uploadDataset(MultipartFile file) throws IOException {
-        // Validate file type
         String filename = file.getOriginalFilename();
-        if (filename == null || !filename.endsWith(".parquet")) {
-            throw new IllegalArgumentException("Only .parquet files are supported");
+        if (filename == null || filename.isBlank()) {
+            throw new IllegalArgumentException("No filename provided");
         }
 
-        // Create upload directory (use absolute path for transferTo compatibility)
+        // Validate file extension
+        String ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+        if (!SUPPORTED_EXTENSIONS.contains(ext)) {
+            throw new IllegalArgumentException(
+                    "Unsupported file format '" + ext + "'. Supported: " + SUPPORTED_EXTENSIONS
+            );
+        }
+
+        // Create upload directory
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
         Files.createDirectories(uploadPath);
 
@@ -83,6 +109,8 @@ public class DatasetService {
                 .filename(uniqueName)
                 .originalFilename(filename)
                 .filePath(filePath.toString())
+                .fileType(detectFileType(filename))
+                .fileSize(file.getSize())
                 .status(DatasetAnalysis.DatasetStatus.UPLOADED)
                 .build();
         dataset = datasetRepo.save(dataset);
@@ -98,6 +126,7 @@ public class DatasetService {
 
     /**
      * Analyze an uploaded dataset by calling the ML service.
+     * Uploads file to ML service, starts background analysis, then polls for completion.
      */
     @SuppressWarnings("unchecked")
     public DatasetAnalysisResponse analyzeDataset(Long datasetId) {
@@ -109,9 +138,9 @@ public class DatasetService {
         datasetRepo.save(dataset);
 
         try {
-            // Step 1: Upload file to ML service via multipart
             Path filePath = Paths.get(dataset.getFilePath());
 
+            // Step 1: Upload file to ML service via multipart
             org.springframework.util.LinkedMultiValueMap<String, Object> body =
                     new org.springframework.util.LinkedMultiValueMap<>();
             body.add("file", new org.springframework.core.io.FileSystemResource(filePath.toFile()));
@@ -131,26 +160,105 @@ public class DatasetService {
             String mlDatasetId = (String) mlUpload.get("dataset_id");
             log.info("ML service dataset_id: {}", mlDatasetId);
 
-            // Step 2: Trigger analysis
-            Map<String, Object> analysisResult = webClient.post()
+            // Store ML dataset ID for progress tracking
+            dataset.setMlDatasetId(mlDatasetId);
+            datasetRepo.save(dataset);
+
+            // Step 2: Trigger analysis (returns immediately, runs in background on ML side)
+            webClient.post()
                     .uri("/api/analyze/" + mlDatasetId)
                     .retrieve()
                     .bodyToMono(Map.class)
-                    .block(Duration.ofSeconds(600)); // 10 min timeout for large datasets
+                    .block(Duration.ofSeconds(30));
 
-            if (analysisResult == null) {
-                throw new RuntimeException("Empty analysis response from ML service");
+            // Step 3: Poll for completion
+            Map<String, Object> analysisResult = null;
+            int maxAttempts = 600; // 10 minutes max (600 * 1 second)
+            for (int attempt = 0; attempt < maxAttempts; attempt++) {
+                Thread.sleep(1000);
+
+                Map<String, Object> progress = webClient.get()
+                        .uri("/api/progress/" + mlDatasetId)
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .block(Duration.ofSeconds(10));
+
+                if (progress != null) {
+                    String status = (String) progress.get("status");
+                    if ("completed".equals(status)) {
+                        // Fetch the full analysis result
+                        analysisResult = webClient.get()
+                                .uri("/api/analysis/" + mlDatasetId)
+                                .retrieve()
+                                .bodyToMono(Map.class)
+                                .block(Duration.ofSeconds(60));
+                        break;
+                    } else if ("failed".equals(status)) {
+                        String error = (String) progress.get("error");
+                        throw new RuntimeException("ML analysis failed: " + error);
+                    }
+                }
             }
 
-            // Step 3: Parse and store results
+            if (analysisResult == null) {
+                throw new RuntimeException("Analysis timed out after 10 minutes");
+            }
+
+            // Step 4: Parse and store results
             return storeAnalysisResults(dataset, analysisResult);
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            dataset.setStatus(DatasetAnalysis.DatasetStatus.FAILED);
+            dataset.setErrorMessage("Analysis interrupted");
+            datasetRepo.save(dataset);
+            throw new RuntimeException("Analysis interrupted", e);
         } catch (Exception e) {
             log.error("Analysis failed for dataset {}", datasetId, e);
             dataset.setStatus(DatasetAnalysis.DatasetStatus.FAILED);
             dataset.setErrorMessage(e.getMessage());
             datasetRepo.save(dataset);
             throw new RuntimeException("Analysis failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get progress for a dataset from the ML service.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getAnalysisProgress(Long datasetId) {
+        DatasetAnalysis dataset = datasetRepo.findById(datasetId)
+                .orElseThrow(() -> new RuntimeException("Dataset not found: " + datasetId));
+
+        String mlDatasetId = dataset.getMlDatasetId();
+        if (mlDatasetId == null) {
+            // No ML analysis started yet
+            Map<String, Object> progress = new HashMap<>();
+            progress.put("dataset_id", datasetId);
+            progress.put("status", dataset.getStatus().name());
+            progress.put("progress_percent", 0);
+            progress.put("steps", List.of());
+            progress.put("current_status", dataset.getStatus().name());
+            progress.put("rows_processed", 0);
+            progress.put("total_rows", 0);
+            progress.put("speed_rows_per_sec", 0);
+            progress.put("estimated_seconds_remaining", 0);
+            return progress;
+        }
+
+        try {
+            Map<String, Object> progress = webClient.get()
+                    .uri("/api/progress/" + mlDatasetId)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block(Duration.ofSeconds(10));
+            return progress != null ? progress : Map.of("status", "unknown");
+        } catch (Exception e) {
+            log.warn("Failed to get progress from ML service: {}", e.getMessage());
+            return Map.of(
+                    "status", dataset.getStatus().name(),
+                    "error", "ML service unavailable"
+            );
         }
     }
 
@@ -373,7 +481,7 @@ public class DatasetService {
                 .severityDistribution(severityDist)
                 .attackDetails(attackDetailDtos)
                 .globalFeatureImportance(globalFeats)
-                .predictions(List.of()) // Predictions table fetched from ML service directly
+                .predictions(List.of())
                 .totalPredictions(0)
                 .build();
     }
@@ -383,6 +491,38 @@ public class DatasetService {
      */
     public List<DatasetAnalysis> listDatasets() {
         return datasetRepo.findAllByOrderByUploadedTimeDesc();
+    }
+
+    /**
+     * Delete an uploaded dataset and its cascaded prediction results and attack details.
+     */
+    @Transactional
+    public void deleteDataset(Long datasetId) {
+        DatasetAnalysis dataset = datasetRepo.findById(datasetId)
+                .orElseThrow(() -> new RuntimeException("Dataset not found with ID: " + datasetId));
+
+        log.info("Deleting dataset analysis ID: {}, filename: {}", datasetId, dataset.getFilename());
+
+        // Delete associated records
+        attackDetailRepo.deleteByDatasetId(datasetId);
+        predResultRepo.deleteByDatasetId(datasetId);
+
+        // Delete physical file on disk if exists
+        try {
+            if (dataset.getFilePath() != null) {
+                Path path = Paths.get(dataset.getFilePath());
+                if (Files.exists(path)) {
+                    Files.delete(path);
+                    log.info("Deleted physical dataset file: {}", path);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete physical file for dataset ID {}: {}", datasetId, e.getMessage());
+        }
+
+        // Delete main dataset record
+        datasetRepo.delete(dataset);
+        log.info("Successfully removed dataset ID {} from database", datasetId);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

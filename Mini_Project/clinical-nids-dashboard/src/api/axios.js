@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Clinical-NIDS Centralized API Client
- * All requests go through Spring Boot backend — NO direct ML service calls.
+ * All requests go through Spring Boot backend â€” NO direct ML service calls.
  */
 
 const API_BASE = 'http://localhost:8080';
@@ -30,7 +30,16 @@ async function handleResponse(res) {
     try {
       const err = await res.json();
       message = err.message || err.error || message;
-    } catch { /* ignore parse errors */ }
+    } catch {
+      // Provide friendly messages for common connection errors
+      if (res.status === 0 || res.type === 'opaque') {
+        message = 'Backend service is unavailable. Please ensure the Spring Boot backend is running on port 8080.';
+      }
+    }
+    // Normalize common error patterns
+    if (message.includes('Connection refused') || message.includes('Failed to fetch')) {
+      message = 'Backend service is unavailable. Please ensure the Spring Boot backend is running.';
+    }
     throw new Error(message);
   }
   const contentType = res.headers.get('content-type');
@@ -91,7 +100,14 @@ export async function apiDownload(path) {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}${path}`, { method: 'GET', headers });
-  if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`);
+  if (!res.ok) {
+    let message = `Download failed: HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      message = err.message || err.error || message;
+    } catch { /* ignore */ }
+    throw new Error(message);
+  }
   return res.blob();
 }
 

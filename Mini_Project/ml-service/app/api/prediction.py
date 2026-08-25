@@ -2,11 +2,13 @@
 Prediction API Routes
 =====================
 FastAPI endpoints for dataset upload, analysis, and prediction.
+Supports multiple file formats and provides progress tracking.
 """
 
 import uuid
 import random
 import asyncio
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -18,6 +20,11 @@ from pydantic import BaseModel
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from app.services import prediction_service
+from app.services.dataset_reader import read_dataset, detect_file_type, SUPPORTED_EXTENSIONS
+from app.services.progress_tracker import (
+    init_progress, update_step, update_progress,
+    set_completed, set_failed, get_progress, cleanup_progress,
+)
 
 router = APIRouter(prefix="/api", tags=["prediction"])
 
@@ -31,6 +38,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR.parent / "results"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+def _get_file_ext(filename: str) -> str:
+    """Extract and validate file extension."""
+    ext = Path(filename).suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            400,
+            f"Unsupported file format '{ext}'. "
+            f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+    return ext
 
 
 # ── Request Models ──────────────────────────────────────────────────────
@@ -182,12 +201,51 @@ def map_features(traffic: TrafficFeatures) -> dict:
     return {FEATURE_MAP[k]: v for k, v in data.items() if k in FEATURE_MAP}
 
 
+# ── Background analysis worker ─────────────────────────────────────────
+
+def _run_analysis_in_background(dataset_id: str, file_path: Path, filename: str):
+    """Run analysis in a background thread with progress updates."""
+    def progress_cb(step_name, **kwargs):
+        update_step(dataset_id, step_name)
+        if kwargs:
+            update_progress(dataset_id, **kwargs)
+
+    try:
+        # Read dataset with progress
+        update_step(dataset_id, "Reading dataset...")
+        df = read_dataset(str(file_path))
+        update_progress(dataset_id, total_rows=len(df))
+
+        # Run analysis
+        from prediction_engine import get_prediction_engine
+        engine = get_prediction_engine()
+        result = engine.predict_from_dataframe(df, progress_callback=progress_cb)
+        result["filename"] = filename
+        result["dataset_id"] = dataset_id
+        result["file_type"] = detect_file_type(filename)
+        result["file_size"] = file_path.stat().st_size
+
+        # Store result
+        dataset_store[dataset_id]["analysis_result"] = result
+        dataset_store[dataset_id]["status"] = "completed"
+        dataset_store[dataset_id]["analyzed_at"] = datetime.utcnow().isoformat()
+
+        set_completed(dataset_id)
+
+    except Exception as e:
+        dataset_store[dataset_id]["status"] = "failed"
+        dataset_store[dataset_id]["error"] = str(e)
+        set_failed(dataset_id, str(e))
+
+
 # ── Dataset Upload & Analysis ──────────────────────────────────────────
 
 @router.post("/upload")
 async def upload_dataset(file: UploadFile = File(...)):
-    if not file.filename or not file.filename.endswith(".parquet"):
-        raise HTTPException(400, "Only .parquet files are supported")
+    if not file.filename:
+        raise HTTPException(400, "No filename provided")
+
+    ext = _get_file_ext(file.filename)
 
     dataset_id = str(uuid.uuid4())[:8]
     save_path = UPLOAD_DIR / f"{dataset_id}_{file.filename}"
@@ -200,15 +258,20 @@ async def upload_dataset(file: UploadFile = File(...)):
         "filename": file.filename,
         "file_path": str(save_path),
         "file_size": len(content),
+        "file_type": detect_file_type(file.filename),
         "status": "uploaded",
         "uploaded_at": datetime.utcnow().isoformat(),
         "analysis_result": None,
     }
 
+    # Initialize progress tracking
+    init_progress(dataset_id)
+
     return {
         "dataset_id": dataset_id,
         "filename": file.filename,
         "file_size": len(content),
+        "file_type": detect_file_type(file.filename),
         "status": "uploaded",
         "message": "Dataset uploaded. Call POST /api/analyze/{dataset_id} to analyze.",
     }
@@ -224,27 +287,46 @@ async def analyze_dataset(dataset_id: str):
         raise HTTPException(409, "Dataset is already being analyzed")
 
     ds["status"] = "analyzing"
-    try:
-        file_path = Path(ds["file_path"])
-        if not file_path.exists():
-            raise HTTPException(404, "Dataset file not found on disk")
+    file_path = Path(ds["file_path"])
+    if not file_path.exists():
+        raise HTTPException(404, "Dataset file not found on disk")
 
-        df = pd.read_parquet(file_path)
-        result = prediction_service.analyze_dataset(df)
-        result["filename"] = ds["filename"]
-        result["dataset_id"] = dataset_id
+    # Run analysis in background thread
+    thread = threading.Thread(
+        target=_run_analysis_in_background,
+        args=(dataset_id, file_path, ds["filename"]),
+        daemon=True,
+    )
+    thread.start()
 
-        ds["analysis_result"] = result
-        ds["status"] = "completed"
-        ds["analyzed_at"] = datetime.utcnow().isoformat()
-        return result
+    return {
+        "dataset_id": dataset_id,
+        "status": "analyzing",
+        "message": "Analysis started. Poll GET /api/progress/{dataset_id} for status.",
+    }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        ds["status"] = "failed"
-        ds["error"] = str(e)
-        raise HTTPException(500, f"Analysis failed: {str(e)}")
+
+@router.get("/progress/{dataset_id}")
+def get_analysis_progress(dataset_id: str):
+    """Get real-time progress of dataset analysis."""
+    progress = get_progress(dataset_id)
+    if progress is None:
+        # Check if dataset exists in store
+        if dataset_id in dataset_store:
+            ds = dataset_store[dataset_id]
+            return {
+                "dataset_id": dataset_id,
+                "status": ds["status"],
+                "progress_percent": 100 if ds["status"] == "completed" else 0,
+                "steps": [],
+                "current_status": ds["status"],
+                "rows_processed": 0,
+                "total_rows": 0,
+                "speed_rows_per_sec": 0,
+                "estimated_seconds_remaining": 0,
+            }
+        raise HTTPException(404, f"Dataset '{dataset_id}' not found")
+    return progress
 
 
 @router.get("/analysis/{dataset_id}")
@@ -274,7 +356,8 @@ def list_datasets():
     return {
         "datasets": [{
             "dataset_id": k, "filename": v["filename"],
-            "file_size": v["file_size"], "status": v["status"],
+            "file_size": v["file_size"], "file_type": v.get("file_type", "unknown"),
+            "status": v["status"],
             "uploaded_at": v["uploaded_at"], "analyzed_at": v.get("analyzed_at"),
         } for k, v in dataset_store.items()],
         "count": len(dataset_store),

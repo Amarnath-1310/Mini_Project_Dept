@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface AttackDetailRepository extends JpaRepository<AttackDetail, Long> {
     List<AttackDetail> findByDatasetId(Long datasetId);
+    void deleteByDatasetId(Long datasetId);
 }

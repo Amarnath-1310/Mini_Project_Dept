@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -36,12 +37,41 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<Map<String, Object>> handleWebClientError(WebClientResponseException ex) {
+        log.error("ML service error: {} {}", ex.getStatusCode(), ex.getMessage());
+        String message = "ML service returned an error";
+        if (ex.getStatusCode().value() == 404) {
+            message = "Requested resource not found in ML service";
+        } else if (ex.getStatusCode().value() == 422) {
+            message = "Invalid dataset format or content";
+        } else if (ex.getStatusCode().value() >= 500) {
+            message = "ML service is experiencing issues. Please try again later.";
+        }
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                "error", "ML Service Error",
+                "message", message,
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
         log.error("Internal error", ex);
+        String msg = ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred";
+
+        // Provide user-friendly messages for common errors
+        if (msg.contains("Connection refused") || msg.contains("Failed to connect")) {
+            msg = "ML service is unavailable. Please ensure the ML service is running on port 8000.";
+        } else if (msg.contains("timed out") || msg.contains("Timeout")) {
+            msg = "The analysis took too long. Try with a smaller dataset or increase the timeout.";
+        } else if (msg.contains("not found")) {
+            msg = "The requested dataset was not found.";
+        }
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "error", "Internal Server Error",
-                "message", ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred",
+                "message", msg,
                 "timestamp", LocalDateTime.now().toString()
         ));
     }

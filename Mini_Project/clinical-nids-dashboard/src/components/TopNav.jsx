@@ -1,45 +1,61 @@
-import { Bell, ShieldCheck, Activity, User, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ShieldCheck, Activity, User, ChevronDown } from 'lucide-react'
+import { getCurrentUser } from '../data/api'
 
 export default function TopNav() {
+  const navigate = useNavigate()
+  const [user, setUser] = useState(getCurrentUser())
+  const [time, setTime] = useState(new Date().toLocaleTimeString())
+
+  useEffect(() => {
+    setUser(getCurrentUser())
+    const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
-    <header className="sticky top-0 z-40 h-16 bg-navy-800/80 backdrop-blur-md border-b border-navy-600/50 flex items-center justify-between px-6">
+    <header className="sticky top-0 z-40 h-16 bg-navy-800/90 backdrop-blur-md border-b border-slate-700/80 flex items-center justify-between px-6 shadow-md">
       {/* Left: Status */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 bg-cyber-green/10 border border-cyber-green/30 rounded-full px-3 py-1.5">
-          <ShieldCheck className="w-4 h-4 text-cyber-green" />
-          <span className="text-xs font-semibold text-cyber-green">Network Protected</span>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 bg-emerald-950/70 border border-emerald-500/50 rounded-full px-3 py-1.5 shadow-sm">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span className="text-xs font-semibold text-emerald-300">Protected Clinical Network</span>
         </div>
-        <div className="flex items-center gap-2 bg-cyber-blue/10 border border-cyber-blue/30 rounded-full px-3 py-1.5">
-          <Activity className="w-4 h-4 text-cyber-blue animate-pulse" />
-          <span className="text-xs font-semibold text-cyber-blue">Monitoring Active</span>
+        <div className="hidden sm:flex items-center gap-2 bg-cyan-950/70 border border-cyan-500/50 rounded-full px-3 py-1.5 shadow-sm">
+          <Activity className="w-4 h-4 text-cyan-400 animate-pulse" />
+          <span className="text-xs font-semibold text-cyan-300">Live Traffic Active</span>
         </div>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-4">
         {/* Live clock */}
-        <div className="text-xs text-gray-400 font-mono hidden lg:block">
-          {new Date().toLocaleTimeString()}
+        <div className="text-xs text-slate-300 font-mono hidden md:flex items-center gap-1.5 bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-700">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>{time}</span>
         </div>
 
-        {/* Notifications */}
-        <button className="relative p-2 rounded-lg hover:bg-navy-700/60 transition-colors">
-          <Bell className="w-5 h-5 text-gray-400" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-cyber-red rounded-full" />
-        </button>
-
         {/* Profile */}
-        <div className="flex items-center gap-3 pl-4 border-l border-navy-600/60">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber-blue to-cyber-purple flex items-center justify-center">
+        <button
+          onClick={() => navigate('/profile')}
+          className="flex items-center gap-3 pl-3 py-1 pr-2 rounded-xl hover:bg-slate-800/90 border border-transparent hover:border-slate-700 transition-all text-left group"
+        >
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber-blue to-purple-600 flex items-center justify-center shadow-md">
             <User className="w-4 h-4 text-white" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-gray-200">Dr. Sarah Chen</p>
-            <p className="text-[10px] text-gray-500">Security Admin</p>
+            <p className="text-sm font-semibold text-white group-hover:text-cyber-cyan transition-colors leading-tight">
+              {user?.fullName || 'Authorized User'}
+            </p>
+            <p className="text-[11px] text-slate-300 font-medium tracking-wide">
+              {user?.role === 'ADMIN' ? 'Administrator' : 'Security Analyst'}
+            </p>
           </div>
-          <ChevronDown className="w-4 h-4 text-gray-500" />
-        </div>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-colors" />
+        </button>
       </div>
     </header>
   )
 }
+

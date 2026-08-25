@@ -10,3 +10,8 @@ pyarrow
 joblib
 python-multipart
 pydantic
+openpyxl
+scapy
+psutil
+requests
+

@@ -1,42 +1,61 @@
-import { useState, useRef, useCallback } from 'react'
+﻿import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Upload, FileText, CheckCircle, AlertCircle, X, Loader2,
-  Database, ArrowRight, Info
+  Database, ArrowRight, Info, Clock, Zap, HardDrive
 } from 'lucide-react'
-import { uploadDataset, analyzeDataset } from '../data/api'
+import { uploadDataset, analyzeDataset, getAnalysisProgress } from '../data/api'
+import { useToast } from '../contexts/ToastContext'
+import { formatSize, formatDuration, formatNumber } from '../utils/formatters'
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
+const ACCEPTED_TYPES = '.csv,.xlsx,.xls,.parquet,.feather,.tsv,.txt'
+
+const ANALYSIS_STEPS = [
+  { key: 'upload', label: 'Uploading dataset' },
+  { key: 'validate', label: 'Validating dataset' },
+  { key: 'preprocess', label: 'Preprocessing features' },
+  { key: 'predict', label: 'Running ML predictions' },
+  { key: 'shap', label: 'Computing SHAP explanations' },
+  { key: 'report', label: 'Generating report' },
+]
 
 export default function DatasetUpload() {
   const navigate = useNavigate()
+  const toast = useToast()
   const fileInputRef = useRef(null)
+  const pollRef = useRef(null)
+
   const [file, setFile] = useState(null)
   const [dragOver, setDragOver] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [phase, setPhase] = useState('idle') // idle | uploading | analyzing | success | error
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(null)
+  const [datasetId, setDatasetId] = useState(null)
+  const [progress, setProgress] = useState(null)
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [])
 
   const validateFile = (f) => {
-    if (!f.name.endsWith('.parquet')) {
-      return 'Only .parquet files are supported'
+    const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase()
+    const supported = ['.csv', '.xlsx', '.xls', '.parquet', '.feather', '.tsv', '.txt']
+    if (!supported.includes(ext)) {
+      return `Unsupported format '${ext}'. Supported: ${supported.join(', ')}`
     }
     if (f.size > MAX_FILE_SIZE) {
-      return `File size exceeds 500MB limit (${(f.size / 1024 / 1024).toFixed(1)}MB)`
+      return `File size exceeds 500MB limit (${formatSize(f.size)})`
     }
     return null
   }
 
   const handleFileSelect = (f) => {
     setError('')
-    setSuccess(null)
+    setPhase('idle')
+    setProgress(null)
     const err = validateFile(f)
-    if (err) {
-      setError(err)
-      return
-    }
+    if (err) { setError(err); toast.error(err); return }
     setFile(f)
   }
 
@@ -47,51 +66,75 @@ export default function DatasetUpload() {
     if (f) handleFileSelect(f)
   }, [])
 
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    setDragOver(true)
-  }
-
+  const handleDragOver = (e) => { e.preventDefault(); setDragOver(true) }
   const handleDragLeave = () => setDragOver(false)
 
-  const formatSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-    return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+  const getStepStatus = (stepKey) => {
+    if (!progress?.steps) return 'pending'
+    const step = progress.steps.find(s => s.name?.toLowerCase().includes(stepKey) || s.key === stepKey)
+    if (step) return step.status
+    return 'pending'
+  }
+
+  const isStepReached = (stepKey) => {
+    if (phase === 'idle') return false
+    const stepOrder = ANALYSIS_STEPS.map(s => s.key)
+    const currentIdx = ANALYSIS_STEPS.findIndex(s => s.key === stepKey)
+    
+    if (phase === 'uploading') return stepOrder.indexOf(stepKey) <= 0
+    if (phase === 'analyzing') {
+      if (progress?.steps) {
+        const completedSteps = progress.steps.filter(s => s.status === 'completed').length
+        return currentIdx <= completedSteps
+      }
+      return true
+    }
+    if (phase === 'success') return true
+    return false
   }
 
   const handleUploadAndAnalyze = async () => {
     if (!file) return
     setError('')
-    setUploading(true)
-    setProgress(10)
+    setPhase('uploading')
+    setProgress(null)
 
     try {
-      // Step 1: Upload to Spring Boot backend
-      setProgress(20)
+      // Step 1: Upload
       const uploadResult = await uploadDataset(file)
-      setProgress(50)
+      setDatasetId(uploadResult.datasetId)
 
-      setUploading(false)
-      setAnalyzing(true)
-      setProgress(60)
+      // Step 2: Trigger analysis (backend will poll ML service)
+      setPhase('analyzing')
 
-      // Step 2: Trigger analysis through backend
+      // Start polling progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const prog = await getAnalysisProgress(uploadResult.datasetId)
+          setProgress(prog)
+          if (prog.status === 'completed' || prog.status === 'COMPLETED') {
+            clearInterval(pollInterval)
+          } else if (prog.status === 'FAILED' || prog.status === 'failed') {
+            clearInterval(pollInterval)
+            throw new Error(prog.error || 'Analysis failed')
+          }
+        } catch (err) {
+          clearInterval(pollInterval)
+          throw err
+        }
+      }, 1000)
+      pollRef.current = pollInterval
+
+      // Also call analyzeDataset which blocks until complete
       const analysisResult = await analyzeDataset(uploadResult.datasetId)
-      setProgress(100)
 
-      setSuccess({
-        datasetId: uploadResult.datasetId,
-        filename: file.name,
-        ...analysisResult,
-      })
+      clearInterval(pollInterval)
+      pollRef.current = null
 
-      // Store datasetId in localStorage so Dashboard can show real data
+      setPhase('success')
+      toast.success('Analysis complete! Redirecting to results...')
       localStorage.setItem('datasetId', String(uploadResult.datasetId))
 
-      setAnalyzing(false)
-
-      // Auto-navigate after short delay
       setTimeout(() => {
         navigate(`/analysis/${uploadResult.datasetId}`, {
           state: { mlResult: analysisResult }
@@ -100,19 +143,22 @@ export default function DatasetUpload() {
 
     } catch (err) {
       console.error('Upload/analysis error:', err)
-      setError(err.message || 'Upload or analysis failed')
-      setUploading(false)
-      setAnalyzing(false)
-      setProgress(0)
+      const msg = err.message || 'Upload or analysis failed'
+      setError(msg)
+      setPhase('error')
+      toast.error(msg)
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
     }
   }
 
   const clearFile = () => {
     setFile(null)
     setError('')
-    setSuccess(null)
-    setProgress(0)
+    setPhase('idle')
+    setProgress(null)
   }
+
+  const isProcessing = phase === 'uploading' || phase === 'analyzing'
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
@@ -120,7 +166,7 @@ export default function DatasetUpload() {
       <div>
         <h1 className="text-2xl font-bold text-white">Dataset Upload & Analysis</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Upload a network traffic dataset (.parquet) for AI-powered intrusion detection analysis
+          Upload a network traffic dataset for AI-powered intrusion detection analysis
         </p>
       </div>
 
@@ -130,7 +176,7 @@ export default function DatasetUpload() {
           <Info className="w-5 h-5 text-cyber-blue mt-0.5 flex-shrink-0" />
           <div className="text-xs text-gray-300 space-y-1">
             <p className="font-semibold text-white">How it works:</p>
-            <p>1. Upload a .parquet file containing network traffic data (CICIDS2017 format)</p>
+            <p>1. Upload a dataset file (CSV, Excel, Parquet, Feather, TSV, TXT) in CICIDS2017 format</p>
             <p>2. The system validates, preprocesses, and runs ML prediction on all flows</p>
             <p>3. SHAP-based explainable AI generates reasons for each detected attack</p>
             <p>4. A comprehensive security report is generated with attack statistics</p>
@@ -143,7 +189,7 @@ export default function DatasetUpload() {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={() => !file && fileInputRef.current?.click()}
+        onClick={() => !file && !isProcessing && fileInputRef.current?.click()}
         className={`glass-card p-12 text-center cursor-pointer transition-all duration-300 ${
           dragOver
             ? 'border-cyber-blue border-2 bg-cyber-blue/5'
@@ -155,7 +201,7 @@ export default function DatasetUpload() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".parquet"
+          accept={ACCEPTED_TYPES}
           className="hidden"
           onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
         />
@@ -168,12 +214,10 @@ export default function DatasetUpload() {
             <p className="text-lg font-semibold text-white mb-1">
               Drop your dataset file here
             </p>
-            <p className="text-sm text-gray-400 mb-3">
-              or click to browse
-            </p>
+            <p className="text-sm text-gray-400 mb-3">or click to browse</p>
             <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
               <span className="flex items-center gap-1">
-                <FileText className="w-3 h-3" /> .parquet format
+                <FileText className="w-3 h-3" /> CSV, Excel, Parquet, Feather, TSV, TXT
               </span>
               <span>Max 500MB</span>
             </div>
@@ -189,7 +233,7 @@ export default function DatasetUpload() {
                 <p className="text-xs text-gray-400">{formatSize(file.size)}</p>
               </div>
             </div>
-            {!uploading && !analyzing && (
+            {!isProcessing && (
               <button onClick={(e) => { e.stopPropagation(); clearFile() }}
                 className="p-2 rounded-lg hover:bg-navy-700/60 text-gray-400 hover:text-red-400 transition-colors">
                 <X className="w-5 h-5" />
@@ -210,42 +254,94 @@ export default function DatasetUpload() {
         </div>
       )}
 
-      {/* Progress */}
-      {(uploading || analyzing) && (
+      {/* Progress Steps */}
+      {(phase === 'uploading' || phase === 'analyzing') && (
         <div className="glass-card p-5">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-4">
             <Loader2 className="w-5 h-5 text-cyber-blue animate-spin" />
             <span className="text-sm font-medium text-white">
-              {uploading ? 'Uploading dataset...' : analyzing ? 'Analyzing dataset (this may take a few minutes)...' : ''}
+              {phase === 'uploading' ? 'Uploading dataset...' : 'Analyzing dataset...'}
             </span>
           </div>
-          <div className="h-2 bg-navy-700 rounded-full overflow-hidden">
+
+          {/* Step list */}
+          <div className="space-y-2 mb-4">
+            {ANALYSIS_STEPS.map((step, idx) => {
+              const reached = isStepReached(step.key)
+              const currentStepIdx = progress?.steps
+                ? progress.steps.findIndex(s => s.status === 'in_progress')
+                : -1
+              const isCurrent = phase === 'analyzing' && (
+                currentStepIdx >= 0
+                  ? idx === Math.min(currentStepIdx + 1, ANALYSIS_STEPS.length - 1)
+                  : idx === 0
+              )
+              const completed = phase === 'success' || (progress?.steps && 
+                progress.steps.filter(s => s.status === 'completed').length > idx)
+
+              return (
+                <div key={step.key} className="flex items-center gap-3">
+                  {completed ? (
+                    <CheckCircle className="w-4 h-4 text-cyber-green flex-shrink-0" />
+                  ) : isCurrent || (reached && phase === 'analyzing') ? (
+                    <Loader2 className="w-4 h-4 text-cyber-blue animate-spin flex-shrink-0" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-navy-600 flex-shrink-0" />
+                  )}
+                  <span className={`text-xs ${completed ? 'text-cyber-green' : reached ? 'text-white' : 'text-gray-500'}`}>
+                    {step.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-2 bg-navy-700 rounded-full overflow-hidden mb-2">
             <div
               className="h-full rounded-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-500"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${progress?.progress_percent || (phase === 'uploading' ? 10 : 50)}%` }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-2">{progress}% complete</p>
+
+          {/* Stats row */}
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{progress?.progress_percent || 0}% complete</span>
+            {progress?.rows_processed > 0 && (
+              <span className="flex items-center gap-1">
+                <HardDrive className="w-3 h-3" />
+                {formatNumber(progress.rows_processed)} / {formatNumber(progress.total_rows)} rows
+              </span>
+            )}
+            {progress?.speed_rows_per_sec > 0 && (
+              <span className="flex items-center gap-1">
+                <Zap className="w-3 h-3" />
+                {formatNumber(progress.speed_rows_per_sec)} rows/s
+              </span>
+            )}
+            {progress?.estimated_seconds_remaining > 0 && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDuration(progress.estimated_seconds_remaining)} remaining
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       {/* Success */}
-      {success && (
+      {phase === 'success' && (
         <div className="flex items-start gap-3 bg-cyber-green/10 border border-cyber-green/30 rounded-xl p-4">
           <CheckCircle className="w-5 h-5 text-cyber-green mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium text-cyber-green">Analysis Complete!</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {success.security_summary
-                ? `${success.security_summary.total_traffic?.toLocaleString()} flows analyzed, ${success.security_summary.attack_count?.toLocaleString()} attacks detected`
-                : 'Redirecting to results...'}
-            </p>
+            <p className="text-xs text-gray-400 mt-1">Redirecting to results...</p>
           </div>
         </div>
       )}
 
       {/* Upload button */}
-      {file && !uploading && !analyzing && !success && (
+      {file && phase === 'idle' && (
         <button
           onClick={handleUploadAndAnalyze}
           className="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2"
