@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface DatasetAnalysisRepository extends JpaRepository<DatasetAnalysis, Long> {
     List<DatasetAnalysis> findAllByOrderByUploadedTimeDesc();
+    List<DatasetAnalysis> findByOwnerEmailOrderByUploadedTimeDesc(String ownerEmail);
     List<DatasetAnalysis> findByStatus(DatasetAnalysis.DatasetStatus status);
 }

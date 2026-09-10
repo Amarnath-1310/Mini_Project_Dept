@@ -1,0 +1,14 @@
+# Build output
+backend/target/
+clinical-nids-dashboard/dist/
+
+# Local runtime data
+backend/data/
+backend/uploads/
+ml-service/uploads/
+ml-service/__pycache__/
+ml-service/app/__pycache__/
+
+# Python environment
+ml-service/.venv/
+*.pyc

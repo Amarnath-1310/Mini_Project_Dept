@@ -1,173 +1,263 @@
-import { useState, useEffect } from 'react'
-import { Activity, Shield, AlertTriangle, Brain, Database, AlertCircle, RefreshCw } from 'lucide-react'
-import { getLatestDashboardSummary } from '../data/api'
+import { useEffect, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  Play,
+  Square,
+  RefreshCw,
+  Wifi,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  getLiveFlows,
+  getLiveInterfaces,
+  getLiveStatus,
+  startLiveCapture,
+  stopLiveCapture,
+} from "../data/api";
 
 export default function Monitoring() {
-  const [summary, setSummary] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [interfaces, setInterfaces] = useState([]);
+  const [selectedInterface, setSelectedInterface] = useState("");
+  const [status, setStatus] = useState(null);
+  const [flows, setFlows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => { loadMonitoring() }, [])
-
-  async function loadMonitoring() {
-    setLoading(true)
+  async function refresh() {
     try {
-      const s = await getLatestDashboardSummary()
-      if (s) setSummary(s)
-    } catch { /* ignore */ }
-    setLoading(false)
+      const [nextStatus, nextFlows] = await Promise.all([
+        getLiveStatus(),
+        getLiveFlows(50),
+      ]);
+      setStatus(nextStatus);
+      setFlows(Array.isArray(nextFlows?.flows) ? nextFlows.flows : []);
+      setError("");
+    } catch (err) {
+      setError(err.message || "Live traffic service is unavailable.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const hasData = !!summary && summary.status === 'COMPLETED'
-  const attackTypes = summary?.attackTypes || []
-  const globalFeatures = summary?.globalFeatureImportance || []
-  const severityDist = summary?.severityDistribution || {}
-  const totalRecords = summary?.totalRecords || 0
-  const attackTraffic = summary?.attackTraffic || 0
-  const normalTraffic = summary?.normalTraffic || 0
-  const modelAccuracy = summary?.modelAccuracy || 0
-  const avgConfidence = summary?.avgConfidence || 0
+  useEffect(() => {
+    getLiveInterfaces()
+      .then((result) => {
+        const available = Array.isArray(result?.interfaces)
+          ? result.interfaces
+          : [];
+        setInterfaces(available);
+        setSelectedInterface(
+          available.find((item) => item.is_up)?.name ||
+            available[0]?.name ||
+            "",
+        );
+      })
+      .catch(() => setError("Network interfaces could not be loaded."));
+    refresh();
+    const timer = window.setInterval(refresh, 3000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  async function toggleCapture() {
+    setWorking(true);
+    setError("");
+    try {
+      if (status?.running) await stopLiveCapture();
+      else await startLiveCapture(selectedInterface, "auto");
+      await refresh();
+    } catch (err) {
+      setError(err.message || "Could not change capture state.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  const running = Boolean(status?.running);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center"><div className="w-8 h-8 border-2 border-cyber-blue border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-sm text-gray-400">Loading monitoring data...</p></div>
+        <div className="text-center text-sm text-gray-400">
+          Loading live traffic controls...
+        </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Threat Monitoring</h1>
-          <p className="text-sm text-gray-400 mt-1">{hasData ? `Monitoring: ${summary.filename}` : 'No analysis data available'}</p>
+          <h1 className="text-2xl font-bold text-white">
+            Live Traffic &amp; Threats
+          </h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Capture authorized network traffic and analyze flows as they arrive.
+          </p>
         </div>
-        <button onClick={loadMonitoring} className="btn-secondary flex items-center gap-2 text-xs py-2"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={selectedInterface}
+            onChange={(event) => setSelectedInterface(event.target.value)}
+            disabled={running || working}
+            className="input-field w-auto min-w-52 text-sm"
+          >
+            <option value="">Automatic interface</option>
+            {interfaces.map((item) => (
+              <option key={item.name} value={item.name}>
+                {item.name} {item.ip ? `(${item.ip})` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={toggleCapture}
+            disabled={working}
+            className={
+              running
+                ? "btn-danger flex items-center gap-2"
+                : "btn-primary flex items-center gap-2"
+            }
+          >
+            {running ? (
+              <Square className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
+            {working
+              ? "Updating..."
+              : running
+                ? "Stop Capture"
+                : "Start Capture"}
+          </button>
+          <button
+            onClick={refresh}
+            className="btn-secondary p-2"
+            title="Refresh live traffic"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {!hasData && (
-        <div className="glass-card p-12 text-center">
-          <AlertCircle className="w-16 h-16 text-cyber-blue mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold text-white mb-2">No Monitoring Data</h3>
-          <p className="text-sm text-gray-400">Upload and analyze a dataset to start monitoring threats.</p>
+      {error && (
+        <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+          {error}
         </div>
       )}
-
-      {hasData && (<>
-        {/* Live Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card">
-            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-blue/15 flex items-center justify-center"><Database className="w-5 h-5 text-cyber-blue" /></div></div>
-            <p className="text-2xl font-bold text-white">{totalRecords.toLocaleString()}</p>
-            <p className="text-xs text-gray-400 mt-1">Total Records Analyzed</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Metric
+          icon={running ? Activity : Square}
+          label="Capture status"
+          value={running ? "Running" : "Stopped"}
+          tone={running ? "text-emerald-300" : "text-gray-300"}
+        />
+        <Metric
+          icon={Wifi}
+          label="Packets captured"
+          value={(status?.packets_captured || 0).toLocaleString()}
+        />
+        <Metric
+          icon={Activity}
+          label="Flows analyzed"
+          value={(status?.flows_analyzed || 0).toLocaleString()}
+        />
+        <Metric
+          icon={AlertTriangle}
+          label="Threats detected"
+          value={(status?.threats_detected || 0).toLocaleString()}
+          tone="text-orange-300"
+        />
+      </div>
+      <div className="glass-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-700/60 px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">
+              Recent analyzed flows
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              {running
+                ? "Updating every 3 seconds"
+                : "Start capture to receive live flow records"}
+            </p>
           </div>
-          <div className="stat-card">
-            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-green/15 flex items-center justify-center"><Shield className="w-5 h-5 text-cyber-green" /></div></div>
-            <p className="text-2xl font-bold text-white">{normalTraffic.toLocaleString()}</p>
-            <p className="text-xs text-gray-400 mt-1">Normal Traffic</p>
-          </div>
-          <div className="stat-card">
-            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-red/15 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-cyber-red" /></div></div>
-            <p className="text-2xl font-bold text-white">{attackTraffic.toLocaleString()}</p>
-            <p className="text-xs text-gray-400 mt-1">Attack Traffic</p>
-          </div>
-          <div className="stat-card">
-            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-cyber-purple/15 flex items-center justify-center"><Activity className="w-5 h-5 text-cyber-purple" /></div></div>
-            <p className="text-2xl font-bold text-white">{(avgConfidence * 100).toFixed(1)}%</p>
-            <p className="text-xs text-gray-400 mt-1">Avg Confidence</p>
-          </div>
+          <span className="text-xs text-gray-400">{flows.length} shown</span>
         </div>
-
-        {/* Attack Categories Table */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Attack Categories</h3>
-          {attackTypes.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-navy-600/60 text-xs text-gray-500 uppercase tracking-wider">
-                    <th className="text-left py-3 px-3 font-medium">Attack Type</th>
-                    <th className="text-left py-3 px-3 font-medium">Count</th>
-                    <th className="text-left py-3 px-3 font-medium">% of Attacks</th>
-                    <th className="text-left py-3 px-3 font-medium">Status</th>
+        {flows.length === 0 ? (
+          <div className="px-5 py-16 text-center">
+            <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-cyber-blue opacity-70" />
+            <p className="text-sm text-gray-300">No live flows yet</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Choose an interface and start capture.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-700/60 text-gray-500">
+                <tr>
+                  <th className="px-5 py-3">Time</th>
+                  <th className="px-5 py-3">Source</th>
+                  <th className="px-5 py-3">Destination</th>
+                  <th className="px-5 py-3">Protocol</th>
+                  <th className="px-5 py-3">Prediction</th>
+                  <th className="px-5 py-3">Confidence</th>
+                  <th className="px-5 py-3">Severity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {flows.map((flow) => (
+                  <tr key={flow.id} className="border-b border-slate-700/40">
+                    <td className="whitespace-nowrap px-5 py-3 text-gray-400">
+                      {flow.timestamp}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-3 text-gray-200">
+                      {flow.source_ip}:{flow.source_port}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-3 text-gray-200">
+                      {flow.destination_ip}:{flow.destination_port}
+                    </td>
+                    <td className="px-5 py-3 text-gray-400">{flow.protocol}</td>
+                    <td
+                      className={
+                        flow.is_attack
+                          ? "px-5 py-3 font-medium text-orange-300"
+                          : "px-5 py-3 text-emerald-300"
+                      }
+                    >
+                      {flow.prediction}
+                    </td>
+                    <td className="px-5 py-3 text-gray-300">
+                      {((flow.confidence || 0) * 100).toFixed(1)}%
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="rounded px-2 py-1 text-gray-300 bg-slate-700/50">
+                        {flow.severity || "NONE"}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {attackTypes.map((at, i) => (
-                    <tr key={i} className="border-b border-navy-600/30 hover:bg-navy-700/30 transition-colors">
-                      <td className="py-2.5 px-3 text-white text-xs font-medium">{at.type}</td>
-                      <td className="py-2.5 px-3 text-gray-300 font-mono text-xs">{at.count?.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-gray-300 font-mono text-xs">{at.percentage?.toFixed(1)}%</td>
-                      <td className="py-2.5 px-3">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${at.percentage > 20 ? 'text-red-400 bg-red-400/10' : at.percentage > 5 ? 'text-orange-400 bg-orange-400/10' : 'text-yellow-400 bg-yellow-400/10'}`}>
-                          {at.percentage > 20 ? 'CRITICAL' : at.percentage > 5 ? 'WARNING' : 'LOW'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <p className="text-sm text-gray-500 text-center py-8">No attacks detected</p>}
-        </div>
-
-        {/* SHAP Feature Importance + Severity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="glass-card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Brain className="w-4 h-4 text-cyber-purple" />
-              <h3 className="text-sm font-semibold text-white">AI Feature Importance (SHAP)</h3>
-            </div>
-            {globalFeatures.length > 0 ? (
-              <div className="space-y-3">
-                {globalFeatures.slice(0, 8).map((f, i) => {
-                  const mx = Math.max(...globalFeatures.map(g => g.impact || 0))
-                  const pct = mx > 0 ? ((f.impact || 0) / mx) * 100 : 0
-                  return (
-                    <div key={i}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-300 truncate mr-2">{f.name}</span>
-                        <span className="text-gray-400 font-mono flex-shrink-0">{(f.impact || 0).toFixed(4)}</span>
-                      </div>
-                      <div className="h-2 bg-navy-700 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-cyber-purple to-cyber-blue transition-all duration-700" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : <p className="text-sm text-gray-500 text-center py-8">No SHAP data available</p>}
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold text-white mb-4">Severity Breakdown</h3>
-            <div className="space-y-3">
-              {Object.entries(severityDist).map(([sev, count]) => {
-                const total = Object.values(severityDist).reduce((a, b) => a + (b || 0), 0)
-                const pct = total > 0 ? (count / total) * 100 : 0
-                const color = sev === 'CRITICAL' ? 'bg-red-500' : sev === 'HIGH' ? 'bg-orange-500' : sev === 'MEDIUM' ? 'bg-yellow-500' : sev === 'LOW' ? 'bg-green-500' : 'bg-gray-500'
-                return (
-                  <div key={sev}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-300">{sev}</span>
-                      <span className="text-gray-400 font-mono">{count?.toLocaleString?.() || 0}</span>
-                    </div>
-                    <div className="h-2 bg-navy-700 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="mt-4 pt-4 border-t border-navy-600/40">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-400">Model Accuracy</span>
-                <span className="text-cyber-green font-mono">{(modelAccuracy * 100).toFixed(1)}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </>)}
+        )}
+      </div>
+      <p className="text-xs text-gray-500">
+        Capture requires permission to inspect the selected interface. The
+        configured simulator provides testable flow telemetry when packet
+        capture is unavailable.
+      </p>
     </div>
-  )
+  );
+}
+
+function Metric({ icon: Icon, label, value, tone = "text-white" }) {
+  return (
+    <div className="stat-card">
+      <Icon className="mb-3 h-5 w-5 text-cyber-blue" />
+      <p className={`text-2xl font-bold ${tone}`}>{value}</p>
+      <p className="mt-1 text-xs text-gray-400">{label}</p>
+    </div>
+  );
 }

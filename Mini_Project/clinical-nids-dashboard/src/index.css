@@ -6,7 +6,7 @@
   * {
     @apply border-slate-700/60;
   }
-  
+
   body {
     @apply bg-navy-900 text-slate-100 antialiased;
   }
@@ -35,7 +35,7 @@
   }
 
   .stat-card {
-    @apply glass-card p-5 hover:border-cyber-blue/60 transition-all duration-300 hover:shadow-cyber-blue/15 hover:shadow-xl;
+    @apply glass-card p-5;
   }
 
   .severity-critical {
@@ -55,42 +55,18 @@
   }
 
   .btn-primary {
-    @apply bg-cyber-blue hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-cyber-blue/40 active:scale-[0.98];
+    @apply bg-cyber-blue hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg;
   }
 
   .btn-secondary {
-    @apply bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium px-4 py-2 rounded-lg transition-all duration-200 border border-slate-600/80 active:scale-[0.98];
+    @apply bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium px-4 py-2 rounded-lg border border-slate-600/80;
   }
 
   .btn-danger {
-    @apply bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-rose-600/40 active:scale-[0.98];
+    @apply bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg;
   }
 
   .input-field {
-    @apply w-full bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyber-blue/80 focus:border-transparent transition-all duration-200;
+    @apply w-full bg-slate-900/90 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyber-blue/80 focus:border-transparent;
   }
-}
-
-@layer utilities {
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyber-blue to-cyber-cyan;
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.4s ease-out;
-  }
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }

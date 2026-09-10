@@ -3,7 +3,7 @@
  * Dataset upload, analysis, and management through Spring Boot backend.
  */
 
-import { apiGet, apiPost, apiUpload } from './axios';
+import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "./axios";
 
 /**
  * Upload a dataset file (supports CSV, Excel, Parquet, Feather, TSV, TXT).
@@ -12,8 +12,8 @@ import { apiGet, apiPost, apiUpload } from './axios';
  */
 export async function uploadDataset(file) {
   const formData = new FormData();
-  formData.append('file', file);
-  return apiUpload('/api/dataset/upload', formData);
+  formData.append("file", file);
+  return apiUpload("/api/dataset/upload", formData);
 }
 
 /**
@@ -48,7 +48,7 @@ export async function getAnalysis(datasetId) {
  * @returns {Promise<Array>} List of datasets.
  */
 export async function getDatasets() {
-  return apiGet('/api/datasets');
+  return apiGet("/api/datasets");
 }
 
 /**
@@ -56,7 +56,7 @@ export async function getDatasets() {
  * @returns {Promise<object>} Dashboard stats.
  */
 export async function getDashboardStats() {
-  return apiGet('/api/dashboard/statistics');
+  return apiGet("/api/dashboard/statistics");
 }
 
 /**
@@ -65,7 +65,7 @@ export async function getDashboardStats() {
  * @returns {Promise<Array>} List of alerts.
  */
 export async function getAlerts(status) {
-  const url = status ? `/api/alerts?status=${status}` : '/api/alerts';
+  const url = status ? `/api/alerts?status=${status}` : "/api/alerts";
   return apiGet(url);
 }
 
@@ -84,7 +84,7 @@ export async function getAlertById(id) {
  * @returns {Promise<object>} Updated alert.
  */
 export async function markAlertReviewed(id) {
-  return apiPost(`/api/alerts/${id}/review`);
+  return apiPut(`/api/alerts/${id}/review`);
 }
 
 /**
@@ -94,4 +94,3 @@ export async function markAlertReviewed(id) {
 export async function deleteDataset(id) {
   return apiDelete(`/api/dataset/${id}`);
 }
-

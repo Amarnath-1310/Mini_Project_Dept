@@ -21,6 +21,9 @@ public class DatasetAnalysis {
 
     private String originalFilename;
 
+    @Column(nullable = false)
+    private String ownerEmail;
+
     private Long totalRecords;
 
     private Integer totalColumns;

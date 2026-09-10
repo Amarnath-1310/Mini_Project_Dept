@@ -29,18 +29,21 @@ public class PredictionResult {
 
     private String modelUsed;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String attackDistribution;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String severityDistribution;
 
     private String riskLevel;
 
     private Double avgConfidence;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String globalFeatureImportance;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String predictions;
 
     private LocalDateTime createdTime;
 

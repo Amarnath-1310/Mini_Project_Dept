@@ -78,7 +78,7 @@ public class DatasetService {
     /**
      * Upload a dataset file (supports multiple formats).
      */
-    public DatasetUploadResponse uploadDataset(MultipartFile file) throws IOException {
+    public DatasetUploadResponse uploadDataset(MultipartFile file, String ownerEmail) throws IOException {
         String filename = file.getOriginalFilename();
         if (filename == null || filename.isBlank()) {
             throw new IllegalArgumentException("No filename provided");
@@ -108,6 +108,7 @@ public class DatasetService {
         DatasetAnalysis dataset = DatasetAnalysis.builder()
                 .filename(uniqueName)
                 .originalFilename(filename)
+                .ownerEmail(ownerEmail)
                 .filePath(filePath.toString())
                 .fileType(detectFileType(filename))
                 .fileSize(file.getSize())
@@ -298,6 +299,7 @@ public class DatasetService {
                 .riskLevel((String) summary.getOrDefault("risk_level", "UNKNOWN"))
                 .avgConfidence(toDouble(summary.get("avg_confidence")))
                 .globalFeatureImportance(objectMapper.writeValueAsString(result.get("global_feature_importance")))
+                .predictions(objectMapper.writeValueAsString(result.getOrDefault("predictions", List.of())))
                 .build();
         predResultRepo.save(predResult);
 
@@ -360,6 +362,26 @@ public class DatasetService {
 
         // Missing features
         List<String> missingFeatures = (List<String>) dsInfo.getOrDefault("missing_features", List.of());
+
+        List<DatasetAnalysisResponse.PredictionTableEntry> predictionEntries = new ArrayList<>();
+        try {
+            if (predResult.getPredictions() != null) {
+            List<Map<String, Object>> storedPredictions = objectMapper.readValue(
+                predResult.getPredictions(), new TypeReference<>() {});
+            predictionEntries = storedPredictions.stream()
+                .map(p -> DatasetAnalysisResponse.PredictionTableEntry.builder()
+                    .flowId((String) p.get("id"))
+                    .flowIndex(toInt(p.get("flow_index")))
+                    .attackType((String) p.get("prediction"))
+                    .confidence(toDouble(p.get("confidence")))
+                    .severity((String) p.getOrDefault("severity", "NONE"))
+                    .isAttack(Boolean.TRUE.equals(p.get("is_attack")))
+                    .build())
+                .collect(Collectors.toList());
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to parse stored predictions", e);
+        }
 
         return DatasetAnalysisResponse.builder()
                 .datasetId(dataset.getId())
@@ -463,6 +485,26 @@ public class DatasetService {
             log.warn("Failed to parse global feature importance", e);
         }
 
+        List<DatasetAnalysisResponse.PredictionTableEntry> predictionEntries = new ArrayList<>();
+        try {
+            if (predResult.getPredictions() != null) {
+                List<Map<String, Object>> storedPredictions = objectMapper.readValue(
+                        predResult.getPredictions(), new TypeReference<>() {});
+                predictionEntries = storedPredictions.stream()
+                        .map(p -> DatasetAnalysisResponse.PredictionTableEntry.builder()
+                                .flowId((String) p.get("id"))
+                                .flowIndex(toInt(p.get("flow_index")))
+                                .attackType((String) p.get("prediction"))
+                                .confidence(toDouble(p.get("confidence")))
+                                .severity((String) p.getOrDefault("severity", "NONE"))
+                                .isAttack(Boolean.TRUE.equals(p.get("is_attack")))
+                                .build())
+                        .collect(Collectors.toList());
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to parse stored predictions", e);
+        }
+
         return DatasetAnalysisResponse.builder()
                 .datasetId(datasetId)
                 .filename(dataset.getOriginalFilename())
@@ -481,16 +523,16 @@ public class DatasetService {
                 .severityDistribution(severityDist)
                 .attackDetails(attackDetailDtos)
                 .globalFeatureImportance(globalFeats)
-                .predictions(List.of())
-                .totalPredictions(0)
+                .predictions(predictionEntries)
+                .totalPredictions(predictionEntries.size())
                 .build();
     }
 
     /**
      * List all uploaded datasets.
      */
-    public List<DatasetAnalysis> listDatasets() {
-        return datasetRepo.findAllByOrderByUploadedTimeDesc();
+    public List<DatasetAnalysis> listDatasets(String ownerEmail) {
+        return datasetRepo.findByOwnerEmailOrderByUploadedTimeDesc(ownerEmail);
     }
 
     /**

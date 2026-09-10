@@ -14,6 +14,7 @@ start "Clinical-NIDS: ML Service" cmd /k "cd /d %SCRIPT_DIR%ml-service && python
 timeout /t 3 /nobreak >nul
 
 echo [2/3] Starting Spring Boot Backend (port 8080)...
+set "JWT_SECRET=local-development-only-secret-change-this-before-deployment-1234567890"
 where mvn >nul 2>&1
 if %errorlevel% equ 0 (
     start "Clinical-NIDS: Backend" cmd /k "cd /d %SCRIPT_DIR%backend && mvn spring-boot:run"

@@ -150,8 +150,8 @@ public class DetectionService {
                 .totalFlows(totalFlows)
                 .totalAttacks(totalAttacks)
                 .criticalAlerts(criticalAlerts)
-                .modelAccuracy(0.987) // From trained model
-                .activeDevices(156)
+                .modelAccuracy(0.0)
+                .activeDevices(0)
                 .severityDistribution(severityDist)
                 .build();
     }

@@ -5,18 +5,18 @@
  * All requests go through Spring Boot backend.
  */
 
-export { 
-  login, 
-  register, 
-  getProfile, 
-  updateProfile, 
-  getCurrentUser, 
-  logout, 
-  isAuthenticated, 
-  getCurrentToken 
-} from '../api/authApi';
+export {
+  login,
+  register,
+  getProfile,
+  updateProfile,
+  getCurrentUser,
+  logout,
+  isAuthenticated,
+  getCurrentToken,
+} from "../api/authApi";
 
-export { getToken, setToken, clearToken } from '../api/axios';
+export { getToken, setToken, clearToken } from "../api/axios";
 
 export {
   uploadDataset,
@@ -29,24 +29,7 @@ export {
   getAlertById,
   markAlertReviewed,
   deleteDataset,
-} from '../api/datasetApi';
-
-export {
-  getAdminUsers,
-  updateUserStatus,
-  updateUserRole,
-  deleteUser,
-  getSystemStatus,
-  deleteDatasetAdmin,
-} from '../api/adminApi';
-
-export {
-  getInterfaces,
-  startLiveCapture,
-  stopLiveCapture,
-  getLiveStatus,
-  getLiveFlows,
-} from '../api/liveTrafficApi';
+} from "../api/datasetApi";
 
 export {
   downloadReport,
@@ -55,11 +38,18 @@ export {
   getReportData,
   getReportDownloadUrl,
   downloadAndSave,
-} from '../api/reportApi';
+} from "../api/reportApi";
 
-export { 
-  getDashboardSummary, 
-  getLatestDashboardSummary, 
-  getDashboardDatasets 
-} from '../api/dashboardApi';
+export {
+  getDashboardSummary,
+  getLatestDashboardSummary,
+  getDashboardDatasets,
+} from "../api/dashboardApi";
 
+export {
+  getLiveInterfaces,
+  startLiveCapture,
+  stopLiveCapture,
+  getLiveStatus,
+  getLiveFlows,
+} from "../api/liveTrafficApi";

@@ -8,7 +8,6 @@ import com.clinicalnids.backend.dto.UserProfileResponse;
 import com.clinicalnids.backend.entity.User;
 import com.clinicalnids.backend.repository.UserRepository;
 import com.clinicalnids.backend.security.JwtTokenProvider;
-import jakarta.annotation.PostConstruct;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -32,34 +31,6 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
     }
 
-    @PostConstruct
-    public void initDefaultUsers() {
-        if (!userRepository.existsByEmail("admin@hospital.org")) {
-            userRepository.save(User.builder()
-                    .email("admin@hospital.org")
-                    .password(passwordEncoder.encode("admin123"))
-                    .role(User.Role.ADMIN)
-                    .fullName("Dr. Sarah Chen")
-                    .department("Clinical Cyber-Defense & CISO")
-                    .phoneNumber("+1 (555) 234-5678")
-                    .bio("Lead Healthcare Security Specialist & MedSentry Security Architect.")
-                    .active(true)
-                    .build());
-        }
-        if (!userRepository.existsByEmail("analyst@hospital.org")) {
-            userRepository.save(User.builder()
-                    .email("analyst@hospital.org")
-                    .password(passwordEncoder.encode("analyst123"))
-                    .role(User.Role.SECURITY_ANALYST)
-                    .fullName("John Smith")
-                    .department("Hospital SOC Operations")
-                    .phoneNumber("+1 (555) 876-5432")
-                    .bio("Tier-2 SOC Security Analyst monitoring IoT medical devices and hospital PACS networks.")
-                    .active(true)
-                    .build());
-        }
-    }
-
     public AuthResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
@@ -77,13 +48,11 @@ public class AuthService {
             throw new IllegalArgumentException("An account with email " + request.getEmail() + " already exists.");
         }
 
-        User.Role role = request.getRole() != null ? request.getRole() : User.Role.SECURITY_ANALYST;
-
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(role)
+                .role(User.Role.SECURITY_ANALYST)
                 .department(request.getDepartment() != null && !request.getDepartment().isBlank() ? request.getDepartment() : "Healthcare Security")
                 .phoneNumber(request.getPhoneNumber())
                 .bio(request.getBio())

@@ -9,6 +9,7 @@ import com.clinicalnids.backend.repository.DatasetAnalysisRepository;
 import com.clinicalnids.backend.repository.PredictionResultRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -110,8 +111,8 @@ public class DashboardController {
      * Returns the summary for the most recently analyzed dataset.
      */
     @GetMapping("/latest/summary")
-    public ResponseEntity<DashboardSummary> getLatestSummary() {
-        List<DatasetAnalysis> datasets = datasetRepo.findAllByOrderByUploadedTimeDesc();
+    public ResponseEntity<DashboardSummary> getLatestSummary(Authentication authentication) {
+        List<DatasetAnalysis> datasets = datasetRepo.findByOwnerEmailOrderByUploadedTimeDesc(authentication.getName());
         if (datasets.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -130,8 +131,8 @@ public class DashboardController {
      * Returns list of all datasets with basic info.
      */
     @GetMapping("/datasets")
-    public ResponseEntity<List<Map<String, Object>>> listDatasets() {
-        List<DatasetAnalysis> datasets = datasetRepo.findAllByOrderByUploadedTimeDesc();
+    public ResponseEntity<List<Map<String, Object>>> listDatasets(Authentication authentication) {
+        List<DatasetAnalysis> datasets = datasetRepo.findByOwnerEmailOrderByUploadedTimeDesc(authentication.getName());
         List<Map<String, Object>> result = datasets.stream()
                 .map(ds -> {
                     Map<String, Object> map = new LinkedHashMap<>();

@@ -3,24 +3,24 @@
  * All requests go through Spring Boot backend â€” NO direct ML service calls.
  */
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 function getToken() {
-  return localStorage.getItem('nids_token');
+  return localStorage.getItem("nids_token");
 }
 
 function setToken(token) {
-  localStorage.setItem('nids_token', token);
+  localStorage.setItem("nids_token", token);
 }
 
 function clearToken() {
-  localStorage.removeItem('nids_token');
+  localStorage.removeItem("nids_token");
 }
 
 function buildHeaders(extra = {}) {
   const token = getToken();
   const headers = { ...extra };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   return headers;
 }
 
@@ -32,18 +32,23 @@ async function handleResponse(res) {
       message = err.message || err.error || message;
     } catch {
       // Provide friendly messages for common connection errors
-      if (res.status === 0 || res.type === 'opaque') {
-        message = 'Backend service is unavailable. Please ensure the Spring Boot backend is running on port 8080.';
+      if (res.status === 0 || res.type === "opaque") {
+        message =
+          "Backend service is unavailable. Please ensure the Spring Boot backend is running on port 8080.";
       }
     }
     // Normalize common error patterns
-    if (message.includes('Connection refused') || message.includes('Failed to fetch')) {
-      message = 'Backend service is unavailable. Please ensure the Spring Boot backend is running.';
+    if (
+      message.includes("Connection refused") ||
+      message.includes("Failed to fetch")
+    ) {
+      message =
+        "Backend service is unavailable. Please ensure the Spring Boot backend is running.";
     }
     throw new Error(message);
   }
-  const contentType = res.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
     return res.json();
   }
   return res;
@@ -51,16 +56,16 @@ async function handleResponse(res) {
 
 export async function apiGet(path) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'GET',
-    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    method: "GET",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
   });
   return handleResponse(res);
 }
 
 export async function apiPost(path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    method: "POST",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
     body: body !== undefined ? JSON.stringify(body) : null,
   });
   return handleResponse(res);
@@ -68,8 +73,8 @@ export async function apiPost(path, body) {
 
 export async function apiPut(path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'PUT',
-    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    method: "PUT",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   return handleResponse(res);
@@ -77,8 +82,8 @@ export async function apiPut(path, body) {
 
 export async function apiDelete(path) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'DELETE',
-    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    method: "DELETE",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
   });
   return handleResponse(res);
 }
@@ -86,9 +91,9 @@ export async function apiDelete(path) {
 export async function apiUpload(path, formData) {
   const token = getToken();
   const headers = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: formData,
   });
@@ -98,14 +103,16 @@ export async function apiUpload(path, formData) {
 export async function apiDownload(path) {
   const token = getToken();
   const headers = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { method: 'GET', headers });
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
   if (!res.ok) {
     let message = `Download failed: HTTP ${res.status}`;
     try {
       const err = await res.json();
       message = err.message || err.error || message;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     throw new Error(message);
   }
   return res.blob();

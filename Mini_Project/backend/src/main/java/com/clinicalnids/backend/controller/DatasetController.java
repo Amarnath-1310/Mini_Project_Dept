@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
 
 import java.io.IOException;
 import java.util.List;
@@ -33,8 +34,8 @@ public class DatasetController {
      */
     @PostMapping("/dataset/upload")
     public ResponseEntity<DatasetUploadResponse> uploadDataset(
-            @RequestParam("file") MultipartFile file) throws IOException {
-        DatasetUploadResponse response = datasetService.uploadDataset(file);
+            @RequestParam("file") MultipartFile file, Authentication authentication) throws IOException {
+        DatasetUploadResponse response = datasetService.uploadDataset(file, authentication.getName());
         return ResponseEntity.ok(response);
     }
 
@@ -129,8 +130,8 @@ public class DatasetController {
      * List all uploaded datasets.
      */
     @GetMapping("/datasets")
-    public ResponseEntity<List<Map<String, Object>>> listDatasets() {
-        List<DatasetAnalysis> datasets = datasetService.listDatasets();
+    public ResponseEntity<List<Map<String, Object>>> listDatasets(Authentication authentication) {
+        List<DatasetAnalysis> datasets = datasetService.listDatasets(authentication.getName());
         List<Map<String, Object>> result = datasets.stream()
                 .map(ds -> {
                     Map<String, Object> map = new java.util.LinkedHashMap<>();
