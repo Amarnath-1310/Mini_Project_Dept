@@ -7,6 +7,7 @@ D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DashboardController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DatasetController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\DetectionController.java
+D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\HealthController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\LiveTrafficController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\controller\TrafficController.java
 D:\Mini_Project_Dept\Mini_Project\backend\src\main\java\com\clinicalnids\backend\dto\AuthResponse.java

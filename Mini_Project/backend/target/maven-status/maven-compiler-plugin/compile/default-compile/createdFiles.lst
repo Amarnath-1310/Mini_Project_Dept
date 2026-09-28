@@ -16,6 +16,7 @@ com\clinicalnids\backend\service\ReportService.class
 com\clinicalnids\backend\dto\UserProfileResponse.class
 com\clinicalnids\backend\controller\DetectionController.class
 com\clinicalnids\backend\entity\User$UserBuilder.class
+com\clinicalnids\backend\service\DatasetService$6.class
 com\clinicalnids\backend\service\AlertService.class
 com\clinicalnids\backend\dto\RegisterRequest$RegisterRequestBuilder.class
 com\clinicalnids\backend\dto\DashboardStats$DashboardStatsBuilder.class
@@ -73,5 +74,6 @@ com\clinicalnids\backend\repository\PredictionResultRepository.class
 com\clinicalnids\backend\service\CustomUserDetailsService.class
 com\clinicalnids\backend\config\SecurityConfig.class
 com\clinicalnids\backend\repository\AttackDetailRepository.class
+com\clinicalnids\backend\controller\HealthController.class
 com\clinicalnids\backend\dto\DatasetAnalysisResponse$PredictionTableEntry$PredictionTableEntryBuilder.class
 com\clinicalnids\backend\dto\DatasetAnalysisResponse.class
